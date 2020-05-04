@@ -6,7 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\benches" isTestSource="true" />
-      <excludeFolder url="file://$MODULE_DIR$/../json-generator\target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
