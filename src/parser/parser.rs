@@ -12,56 +12,137 @@ use nom::{
     Err, IResult, HexDisplay,
 };
 use self::nom::Err::Error;
-use crate::parser::Value;
+use crate::parser::{Json};
+use self::nom::character::complete::none_of;
+use self::nom::bytes::complete::is_not;
+use self::nom::character::is_digit;
+use std::str::FromStr;
+use std::num::ParseIntError;
 
-pub fn is_string_character(c: char) -> bool {
+pub fn is_space(c: char) -> bool {
+    c == ' ' || c == '\t' || c == '\r' || c == '\n'
+}
+
+fn sp(i: &str) -> IResult<&str, &str> {
+    take_while(is_space)(i)
+}
+
+fn is_string_character(c: char) -> bool {
     c != '"' && c != '\\'
 }
 
-fn bool(i: &str) -> IResult<&str, bool> {
+fn bool_val(i: &str) -> IResult<&str, Json> {
     alt((
-        map(tag("false"), |_| false),
-        map(tag("true"), |_| true)
+        map(tag("false"), |_| Json::Bool(false)),
+        map(tag("true"), |_| Json::Bool(true))
     ))(i)
+}
+
+fn null_val(i: &str) -> IResult<&str, Json> {
+    map(tag("null"), |_| Json::Null)(i)
 }
 
 fn escaped_string(i: &str) -> IResult<&str, &str> {
     escaped(take_while1(is_string_character), '\\', one_of("\"bfnrt\\"))(i)
 }
 
-fn string(i: &str) -> IResult<&str, Value> {
+fn string_val(i: &str) -> IResult<&str, Json> {
     preceded(
         char('\"'),
-        cut(terminated(map_res(escaped_string, str_to_val), char('\"'), )),
+        cut(terminated(map_res(escaped_string, str_to_val), char('\"'))),
     )(i)
 }
 
-fn str_to_val(v: &str) -> Result<Value, Err<String>> {
-    Ok(Value::Str(String::from(v)))
+//todo  add float and double values
+fn num_val(i: &str) -> IResult<&str, Json> {
+    map_res(take_while1(char::is_numeric), str_to_num)(i)
+}
+
+
+fn key(i: &str) -> IResult<&str, &str> {
+    preceded(
+        char('\"'), cut(terminated(take_while1(is_string_character), char('\"'))),
+    )(i)
+}
+
+fn array(i: &str) -> IResult<&str, Json> {
+    preceded(char('['),
+             cut(
+                 terminated(
+                     map_res(separated_list(preceded(sp, char(',')), value),arr_to_val),
+                     preceded(sp, char(']')),
+                 )),
+    )(i)
+}
+
+fn value(i:&str) -> IResult<&str,Json>{
+    preceded(sp,
+             alt((
+                bool_val,null_val,num_val,array,
+             ))
+    )(i)
+}
+
+fn limiter(i: &str) -> IResult<&str, &str> {
+    preceded(tag("/*"), cut(terminated(is_not("/**/"), tag("*/"))))(i)
+}
+
+fn str_to_val(v: &str) -> Result<Json, Err<String>> {
+    Ok(Json::Str(String::from(v)))
+}
+fn arr_to_val(v: Vec<Json>) -> Result<Json, Err<String>> {
+    Ok(Json::Array(v))
+}
+
+fn str_to_num(v: &str) -> Result<Json, ParseIntError> {
+    let res: i64 = v.parse()?;
+    Ok(Json::Num(res))
+}
+
+fn str_to_str(v: &str) -> Result<&str, Err<String>> {
+    Ok(v)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parser::{bool, escaped_string, string};
+    use crate::parser::parser::{bool_val, escaped_string, string_val, limiter, num_val, array};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
-    use crate::parser::Value;
+    use crate::parser::Json;
+    use crate::parser::Json::{Array, Num};
+
     #[test]
     fn bool_test() {
-        assert_eq!(bool("true 1"), Ok((" 1", true)));
-        assert_eq!(bool("1 true"), Err(Error(("1 true", Tag))))
+        assert_eq!(bool_val("true 1"), Ok((" 1", Json::Bool(true))));
+        assert_eq!(bool_val("1 true"), Err(Error(("1 true", Tag))))
     }
 
 
     #[test]
     fn escaped_string_test() {
         assert_eq!(escaped_string("abc"), Ok(("", "abc")));
-        assert_eq!(escaped_string("abc\"bcd\"cde"), Ok(("bcd", "abc")));
+        assert_eq!(escaped_string("abc\"bcd\"cde"), Ok(("\"bcd\"cde", "abc")));
     }
 
     #[test]
     fn string_test() {
-        assert_eq!(string("\"abc\""), Ok(("", Value::Str(String::from("abc")))));
-        assert_eq!(string(r#""ab\"cb\"cd""#), Ok(("", Value::Str(String::from(r#"ab\"cb\"cd"#)))));
+        assert_eq!(string_val("\"abc\""), Ok(("", Json::Str(String::from("abc")))));
+        assert_eq!(string_val(r#""ab\"cb\"cd""#), Ok(("", Json::Str(String::from(r#"ab\"cb\"cd"#)))));
+    }
+
+    #[test]
+    fn limiter_test() {
+        assert_eq!(limiter("/*a bc*/"), Ok(("", "a bc")));
+        assert_eq!(limiter("/*a bc*/ /n sde"), Ok((" /n sde", "a bc")));
+    }
+
+    #[test]
+    fn number_test() {
+        assert_eq!(num_val("54 abc"), Ok((" abc", Json::Num(54))));
+    }
+    #[test]
+    fn array_test() {
+        assert_eq!(array("[1,2,3 , 4]"), Ok(("", Array(vec![Num(1), Num(2), Num(3), Num(4)]))));
+        assert_eq!(array("[ ]"),Ok(("", Array(vec![]))));
     }
 }
