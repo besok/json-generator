@@ -12,12 +12,13 @@ use nom::{
     Err, IResult, HexDisplay,
 };
 use self::nom::Err::Error;
-use crate::parser::{Json};
+use crate::parser::{Json, Field};
 use self::nom::character::complete::none_of;
 use self::nom::bytes::complete::is_not;
 use self::nom::character::is_digit;
 use std::str::FromStr;
 use std::num::ParseIntError;
+use self::nom::error::ErrorKind;
 
 pub fn is_space(c: char) -> bool {
     c == ' ' || c == '\t' || c == '\r' || c == '\n'
@@ -31,14 +32,14 @@ fn is_string_character(c: char) -> bool {
     c != '"' && c != '\\'
 }
 
-fn bool_val(i: &str) -> IResult<&str, Json> {
+fn boolean(i: &str) -> IResult<&str, Json> {
     alt((
         map(tag("false"), |_| Json::Bool(false)),
         map(tag("true"), |_| Json::Bool(true))
     ))(i)
 }
 
-fn null_val(i: &str) -> IResult<&str, Json> {
+fn null(i: &str) -> IResult<&str, Json> {
     map(tag("null"), |_| Json::Null)(i)
 }
 
@@ -46,7 +47,7 @@ fn escaped_string(i: &str) -> IResult<&str, &str> {
     escaped(take_while1(is_string_character), '\\', one_of("\"bfnrt\\"))(i)
 }
 
-fn string_val(i: &str) -> IResult<&str, Json> {
+fn string(i: &str) -> IResult<&str, Json> {
     preceded(
         char('\"'),
         cut(terminated(map_res(escaped_string, str_to_val), char('\"'))),
@@ -54,10 +55,18 @@ fn string_val(i: &str) -> IResult<&str, Json> {
 }
 
 //todo  add float and double values
-fn num_val(i: &str) -> IResult<&str, Json> {
+fn num(i: &str) -> IResult<&str, Json> {
     map_res(take_while1(char::is_numeric), str_to_num)(i)
 }
 
+fn field(i: &str) -> IResult<&str, Field> {
+    match separated_pair(preceded(sp, key),
+                         cut(preceded(sp, char(':'))),
+                         value)(i) {
+        Ok((s, (n, j))) => Ok((s, Field::new(n.to_string(), j))),
+        Result::Err(x) => Result::Err(x)
+    }
+}
 
 fn key(i: &str) -> IResult<&str, &str> {
     preceded(
@@ -67,19 +76,29 @@ fn key(i: &str) -> IResult<&str, &str> {
 
 fn array(i: &str) -> IResult<&str, Json> {
     preceded(char('['),
-             cut(
-                 terminated(
-                     map_res(separated_list(preceded(sp, char(',')), value),arr_to_val),
-                     preceded(sp, char(']')),
-                 )),
+             cut(terminated(
+                 map_res(separated_list(preceded(sp, char(',')), value),
+                         arr_to_val),
+                 preceded(sp, char(']')),
+             )),
     )(i)
 }
 
-fn value(i:&str) -> IResult<&str,Json>{
+fn object(i: &str) -> IResult<&str, Json> {
+    preceded(char('{'),
+             cut(terminated(
+                 map_res(separated_list(preceded(sp, char(',')), field),
+                         obj_to_val),
+                 preceded(sp, char('}')),
+             )),
+    )(i)
+}
+
+fn value(i: &str) -> IResult<&str, Json> {
     preceded(sp,
              alt((
-                bool_val,null_val,num_val,array,
-             ))
+                 boolean, null, num, array, string, object
+             )),
     )(i)
 }
 
@@ -90,8 +109,13 @@ fn limiter(i: &str) -> IResult<&str, &str> {
 fn str_to_val(v: &str) -> Result<Json, Err<String>> {
     Ok(Json::Str(String::from(v)))
 }
+
 fn arr_to_val(v: Vec<Json>) -> Result<Json, Err<String>> {
     Ok(Json::Array(v))
+}
+
+fn obj_to_val(v: Vec<Field>) -> Result<Json, Err<String>> {
+    Ok(Json::Object(v))
 }
 
 fn str_to_num(v: &str) -> Result<Json, ParseIntError> {
@@ -105,16 +129,16 @@ fn str_to_str(v: &str) -> Result<&str, Err<String>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parser::{bool_val, escaped_string, string_val, limiter, num_val, array};
+    use crate::parser::parser::{boolean, escaped_string, string, limiter, num, array, field, object};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
-    use crate::parser::Json;
-    use crate::parser::Json::{Array, Num};
+    use crate::parser::{Json, Field, Generator};
+    use crate::parser::Json::{Array, Num, Object};
 
     #[test]
     fn bool_test() {
-        assert_eq!(bool_val("true 1"), Ok((" 1", Json::Bool(true))));
-        assert_eq!(bool_val("1 true"), Err(Error(("1 true", Tag))))
+        assert_eq!(boolean("true 1"), Ok((" 1", Json::Bool(true))));
+        assert_eq!(boolean("1 true"), Err(Error(("1 true", Tag))))
     }
 
 
@@ -126,8 +150,8 @@ mod tests {
 
     #[test]
     fn string_test() {
-        assert_eq!(string_val("\"abc\""), Ok(("", Json::Str(String::from("abc")))));
-        assert_eq!(string_val(r#""ab\"cb\"cd""#), Ok(("", Json::Str(String::from(r#"ab\"cb\"cd"#)))));
+        assert_eq!(string("\"abc\""), Ok(("", Json::Str(String::from("abc")))));
+        assert_eq!(string(r#""ab\"cb\"cd""#), Ok(("", Json::Str(String::from(r#"ab\"cb\"cd"#)))));
     }
 
     #[test]
@@ -138,11 +162,28 @@ mod tests {
 
     #[test]
     fn number_test() {
-        assert_eq!(num_val("54 abc"), Ok((" abc", Json::Num(54))));
+        assert_eq!(num("54 abc"), Ok((" abc", Json::Num(54))));
     }
+
     #[test]
     fn array_test() {
         assert_eq!(array("[1,2,3 , 4]"), Ok(("", Array(vec![Num(1), Num(2), Num(3), Num(4)]))));
-        assert_eq!(array("[ ]"),Ok(("", Array(vec![]))));
+        assert_eq!(array("[ ]"), Ok(("", Array(vec![]))));
+    }
+
+    #[test]
+    fn field_test() {
+        assert_eq!(field(r#""field":"string""#), Ok(("", Field::new("field".to_string(), Json::Str("string".to_string())))));
+    }
+
+    #[test]
+    fn object_test() {
+        assert_eq!(object(r#"{"field": {"next_field": {"final_field": 42}}}"#),
+                   Ok(("", Object(vec![Field { name: "field".to_string(),
+                       value: Object(vec![Field { name: "next_field".to_string(),
+                           value: Object(vec![Field { name: "final_field".to_string(),
+                               value: Num(42), generator: Generator::Default }]),
+                           generator: Generator::Default }]),
+                       generator: Generator::Default }]))));
     }
 }

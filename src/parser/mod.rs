@@ -25,11 +25,18 @@ impl Field {
     fn new_with(name:String, value: Json, generator:Generator) -> Self{
         Field{name,value,generator}
     }
+
+
 }
 
 #[derive(Clone,Debug,PartialEq)]
 enum Generator {
-    Default
+    Default,
+    Sequence(usize),
+    RandomString(usize),
+    RandomFromFile(String,String),
+    RandomFromList(Vec<>),
+
 }
 
 impl ToString for Field {

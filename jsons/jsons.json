@@ -2,7 +2,7 @@
   "person": {
     /*sequence(10)*/
     "id": 1,
-    /* range('a'..'z', 40) */
+    /* random(40) */
     "name": "Eli\"za\"beth",
     /* randomFromFile(/dir1/dir2/file.txt) */
     "surname": "E",
