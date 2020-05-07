@@ -12,11 +12,21 @@
     - works with schema  
     
 #### Notes
-- special // 
+- special  
     - correspondingly, the list of functions with conditions like:
-        - string : list with values like ['a','b','c'] / ranges ['a'..'z'], length: 1-40, const
-        - int: seq:1-100 / rand:1-100, list: [1,3,4,5]
-        - array: const, random with max elem
-        - from file from list
-
- 
+        - string
+            - randomFromList with list
+            - randomFromFile with path
+            - random with len
+            - const with val
+            - currentDate with format
+            - currentDateTime with format
+            - uuid
+        - int: 
+            - sequence with start pos
+            - randomFromList with list
+            - randomFromFile with path
+            - const with val
+            - random with start and end pos
+        - array
+            - array with func and element count 

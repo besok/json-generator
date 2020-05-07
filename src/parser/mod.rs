@@ -14,15 +14,15 @@ enum Json {
 struct Field {
     name: String,
     value: Json,
-    generator:Generator,
+    generator: gen,
 }
 
 impl Field {
     fn new(name:String, value: Json) -> Self{
-        let generator = Generator::Default;
+        let generator = gen::Default;
         Field{name,value,generator}
     }
-    fn new_with(name:String, value: Json, generator:Generator) -> Self{
+    fn new_with(name:String, value: Json, generator: gen) -> Self{
         Field{name,value,generator}
     }
 
@@ -30,13 +30,11 @@ impl Field {
 }
 
 #[derive(Clone,Debug,PartialEq)]
-enum Generator {
+enum gen {
     Default,
     Sequence(usize),
     RandomString(usize),
     RandomFromFile(String,String),
-    RandomFromList(Vec<>),
-
 }
 
 impl ToString for Field {
@@ -72,7 +70,7 @@ fn join(a: String, b: String) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Field, Json, Generator};
+    use crate::parser::{Field, Json, gen};
 
     #[test]
     fn field_test() {
