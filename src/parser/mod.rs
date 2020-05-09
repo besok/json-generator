@@ -1,7 +1,10 @@
+use std::fmt::{Debug, Formatter, Error};
+
 pub mod parser;
 
+
 #[derive(Clone, Debug, PartialEq)]
-enum Json {
+pub enum Json {
     Num(i64),
     Str(String),
     Bool(bool),
@@ -10,31 +13,18 @@ enum Json {
     Array(Vec<Json>),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-struct Field {
+
+#[derive( Clone, Debug, PartialEq)]
+pub struct Field {
     name: String,
     value: Json,
-    generator: gen,
+    g: usize,
 }
 
 impl Field {
-    fn new(name:String, value: Json) -> Self{
-        let generator = gen::Default;
-        Field{name,value,generator}
+    fn new(name: String, value: Json) -> Self {
+        Field { name, value, g: 0 }
     }
-    fn new_with(name:String, value: Json, generator: gen) -> Self{
-        Field{name,value,generator}
-    }
-
-
-}
-
-#[derive(Clone,Debug,PartialEq)]
-enum gen {
-    Default,
-    Sequence(usize),
-    RandomString(usize),
-    RandomFromFile(String,String),
 }
 
 impl ToString for Field {
@@ -56,7 +46,6 @@ impl ToString for Json {
     }
 }
 
-
 fn vec_to_string<V: ToString>(arr: &Vec<V>) -> String {
     arr.iter()
         .map(ToString::to_string)
@@ -70,11 +59,11 @@ fn join(a: String, b: String) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Field, Json, gen};
+    use crate::parser::{Field, Json};
 
     #[test]
     fn field_test() {
-        let f = Field::new("name".to_string(), Json::Null, );
+        let f = Field::new("name".to_string(), Json::Null);
         assert_eq!("\"name\":null", f.to_string())
     }
 
@@ -93,17 +82,17 @@ mod tests {
         assert_eq!(r#""string""#, string.to_string());
 
         let object = Json::Object(vec![
-            Field::new ("one".to_string(), Json::Object(vec![Field::new ("under_one".to_string(), Json::Null )]) ),
-            Field::new ("two".to_string(), Json::Object(vec![Field::new ("under_two".to_string(), Json::Num(100) )]) ),
-            Field ::new("one".to_string(), Json::Bool(false) ),
+            Field::new("one".to_string(), Json::Object(vec![Field::new("under_one".to_string(), Json::Null)])),
+            Field::new("two".to_string(), Json::Object(vec![Field::new("under_two".to_string(), Json::Num(100))])),
+            Field::new("one".to_string(), Json::Bool(false)),
         ]);
 
         assert_eq!(r#"{"one":{"under_one":null},"two":{"under_two":100},"one":false}"#, object.to_string());
 
         let arr = Json::Array(vec![
-            Json::Object(vec![Field::new ("under_one".to_string(), Json::Null )]),
-            Json::Object(vec![Field::new ("under_one".to_string(), Json::Null )]),
-            Json::Object(vec![Field::new ("under_one".to_string(), Json::Null )])
+            Json::Object(vec![Field::new("under_one".to_string(), Json::Null)]),
+            Json::Object(vec![Field::new("under_one".to_string(), Json::Null)]),
+            Json::Object(vec![Field::new("under_one".to_string(), Json::Null)])
         ]);
         assert_eq!(r#"[{"under_one":null},{"under_one":null},{"under_one":null}]"#, arr.to_string());
     }

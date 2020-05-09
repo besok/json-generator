@@ -132,7 +132,7 @@ mod tests {
     use crate::parser::parser::{boolean, escaped_string, string, limiter, num, array, field, object};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
-    use crate::parser::{Json, Field, gen};
+    use crate::parser::{Json, Field};
     use crate::parser::Json::{Array, Num, Object};
 
     #[test]
@@ -179,11 +179,18 @@ mod tests {
     #[test]
     fn object_test() {
         assert_eq!(object(r#"{"field": {"next_field": {"final_field": 42}}}"#),
-                   Ok(("", Object(vec![Field { name: "field".to_string(),
-                       value: Object(vec![Field { name: "next_field".to_string(),
-                           value: Object(vec![Field { name: "final_field".to_string(),
-                               value: Num(42), generator: gen::Default }]),
-                           generator: gen::Default }]),
-                       generator: gen::Default }]))));
+                   Ok(("", Object(vec![Field {
+                       name: "field".to_string(),
+                       value: Object(vec![Field {
+                           name: "next_field".to_string(),
+                           value: Object(vec![Field {
+                               name: "final_field".to_string(),
+                               value: Num(42),
+                               g: 0
+                           }]),
+                           g: 0
+                       }]),
+                       g: 0
+                   }]))));
     }
 }
