@@ -1,28 +1,18 @@
+pub mod generators;
+
 use std::fmt::Debug;
 use crate::parser::Json;
 use std::collections::HashMap;
+use std::thread::Thread;
+use rand::prelude::ThreadRng;
+use std::ops::Range;
+use rand::Rng;
+use rand::distributions::Alphanumeric;
+use uuid::Uuid;
 
 trait Generator {
     fn next(&mut self) -> Json;
 }
-
-struct Constant<T> {
-    value: T
-}
-
-
-impl Generator for Constant<String> {
-    fn next(&mut self) -> Json {
-        Json::Str(self.value.clone())
-    }
-}
-
-impl Generator for Constant<i64> {
-    fn next(&mut self) -> Json {
-        Json::Num(self.value.clone())
-    }
-}
-
 
 pub struct Generators {
     idx: usize,
@@ -50,8 +40,9 @@ impl Generators {
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::{Generators, Constant};
     use crate::parser::Json;
+    use crate::generator::Generators;
+    use crate::generator::generators::Constant;
 
     #[test]
     fn test() {

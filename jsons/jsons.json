@@ -16,7 +16,7 @@
     "address": {
       /* constStr("the same") */
       "street": "Grip",
-      /* rangeInt(1..1000) */
+      /* randomInt(1,1000) */
       "house": 10,
       /* randomStrFromList(Helsinki,Berlin,Moscow,Dublin,London) */
       "city": "Berlin"

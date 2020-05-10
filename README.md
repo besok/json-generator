@@ -34,17 +34,16 @@
             - const with val     
             
 - list :
-    - sequence : usize
-    - randomStr: usize - len of record
+    -. sequence : usize
+    -. randomStr: usize - len of record
+    -. randomInt : start and stop usize
     - randomStrFromFile : path to the file , delimiter
     - randomIntFromFile : path to the file , delimiter
-    - randomStrFromList : list of strings
-    - randomIntFromList : list of integers
+    -. randomStrFromList : list of strings
+    -. randomIntFromList : list of integers
     - array : function , size
-    - constStr : string
-    - constInt : i64
-    - rangeInt : start and stop usize
-    - uuid 
-    - currentDate : string with format
-    - currentDateTame : string with format
+    -. constStr : string 
+    -. constInt : i64 
+    -. uuid 
+    -. currentDateTame : string with format
     
