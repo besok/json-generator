@@ -7,7 +7,11 @@ use rand::Rng;
 use chrono::Utc;
 use rand::seq::SliceRandom;
 use std::fs::File;
-use std::io::{Read, Error};
+use std::io::{Read, Error, ErrorKind};
+use std::str::FromStr;
+use std::num::ParseIntError;
+use std::string::ParseError;
+use std::fmt::Debug;
 
 pub struct Null {}
 
@@ -17,19 +21,24 @@ impl Generator for Null {
     }
 }
 
-pub struct Constant<T> {
+pub struct Constant<T:Into<Json> + Clone> {
     pub value: T
 }
 
-impl Generator for Constant<String> {
-    fn next(&mut self) -> Json {
-        Json::Str(self.value.clone())
+impl Into<Json> for String{
+    fn into(self) -> Json {
+        Json::Str(self.clone())
+    }
+}
+impl Into<Json> for i64{
+    fn into(self) -> Json {
+        Json::Num(self.clone())
     }
 }
 
-impl Generator for Constant<i64> {
+impl<T:Into<Json>+Clone> Generator for Constant<T> {
     fn next(&mut self) -> Json {
-        Json::Num(self.value.clone())
+        self.value.clone().into()
     }
 }
 
@@ -111,48 +120,67 @@ impl Generator for CurrentDateTime {
     }
 }
 
-struct RandomFromList<T> {
+struct RandomFromList<T:Into<Json> + Clone> {
     values: Vec<T>,
     rng: ThreadRng,
 }
 
-impl<T> RandomFromList<T> {
+impl<T:Into<Json> + Clone> RandomFromList<T> {
     fn new(values: Vec<T>) -> Self {
         RandomFromList { values, rng: rand::thread_rng() }
     }
 }
 
-impl Generator for RandomFromList<String> {
+
+
+impl<T> Generator for RandomFromList<T>
+    where T:Into<Json> + Clone{
     fn next(&mut self) -> Json {
         match self.values.choose(&mut self.rng) {
             None => Json::Null,
-            Some(v) => Json::Str(v.clone()),
+            Some(v) => v.clone().into(),
         }
     }
 }
 
-impl Generator for RandomFromList<i64> {
-    fn next(&mut self) -> Json {
-        match self.values.choose(&mut self.rng) {
-            None => Json::Null,
-            Some(v) => Json::Num(v.clone()),
-        }
-    }
-}
-
-struct RandomFromFile<T> {
+struct RandomFromFile<T: FromStr + Clone + Into<Json>>
+    where <T as FromStr>::Err: Debug {
     path: String,
     delim: String,
     g: RandomFromList<T>,
 }
 
-//impl<T> RandomFromFile<T> {
-//    fn new(path: String, delim: String) -> Self {
-//
-//    }
-//}
+impl<T: FromStr + Clone + Into<Json>> RandomFromFile<T>
+    where <T as FromStr>::Err: Debug {
+    fn new(path: &str, delim: &str) -> Result<Self, Error> {
+        let values = from_string(read_file_into_string(path)?, delim);
+        Ok(
+            RandomFromFile {
+                path: path.to_string(),
+                delim: delim.to_string(),
+                g: RandomFromList { values, rng: Default::default() },
+            }
+        )
+    }
+}
 
-fn read_file_into_string(path: String) -> Result<String, Error> {
+impl<T: Clone + FromStr + Into<Json>> Generator for RandomFromFile<T>
+    where <T as FromStr>::Err: Debug{
+    fn next(&mut self) -> Json {
+        self.g.next()
+    }
+}
+
+fn from_string<T: FromStr>(v: String, d: &str) -> Vec<T>
+    where <T as FromStr>::Err: Debug {
+    v.split(d)
+        .map(FromStr::from_str)
+        .filter(Result::is_ok)
+        .map(Result::unwrap)
+        .collect()
+}
+
+fn read_file_into_string(path: &str) -> Result<String, Error> {
     let mut contents = String::new();
     File::open(path)?.read_to_string(&mut contents)?;
     Ok(contents)
@@ -162,7 +190,7 @@ fn read_file_into_string(path: String) -> Result<String, Error> {
 #[cfg(test)]
 mod tests {
     use crate::parser::Json;
-    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string};
+    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, from_string, RandomFromFile};
     use crate::generator::Generator;
     use std::io::Error;
 
@@ -226,10 +254,36 @@ mod tests {
     }
 
     #[test]
-    fn test_string_from_file(){
-        match read_file_into_string(r#"C:\projects\json-generator\jsons\list.txt"#.to_string()){
-            Ok(v) => assert_eq!("1,2,3,4,5,6",v),
-            Err(e) => panic!("error {}",e),
+    fn test_string_from_file() {
+        match read_file_into_string(r#"C:\projects\json-generator\jsons\list.txt"#) {
+            Ok(v) => assert_eq!("1,2,3,4,5,6", v),
+            Err(e) => panic!("error {}", e),
+        };
+    }
+
+    #[test]
+    fn from_string_test() {
+        let vec = from_string::<String>("a,b,c".to_string(), ",");
+        assert_eq!(vec, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+
+        let vec = from_string::<i32>("1,2,3".to_string(), ",");
+        assert_eq!(vec, vec![1, 2, 3]);
+
+        let vec = from_string::<i32>("1,c,3".to_string(), ",");
+        assert_eq!(vec, vec![1, 3]);
+    }
+
+    #[test]
+    fn from_file_test() {
+        match RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ","){
+            Ok(ref mut g) => {
+                if let Json::Num(el) = g.next(){
+                    assert!(el > 0 && el < 7);
+                }else{
+                    panic!("num")
+                }
+            },
+            Err(_) => panic!("error, should be ok"),
         };
     }
 }
