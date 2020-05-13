@@ -19,6 +19,10 @@ use self::nom::character::is_digit;
 use std::str::FromStr;
 use std::num::ParseIntError;
 use self::nom::error::ErrorKind;
+use crate::generator::generators::{Sequence};
+use std::cell::RefCell;
+use std::rc::Rc;
+use crate::generator::{Gen, new};
 
 pub fn is_space(c: char) -> bool {
     c == ' ' || c == '\t' || c == '\r' || c == '\n'
@@ -56,7 +60,7 @@ fn string(i: &str) -> IResult<&str, Json> {
 
 //todo  add float and double values
 fn num(i: &str) -> IResult<&str, Json> {
-    map_res(take_while1(char::is_numeric), str_to_num)(i)
+    map_res(take_while1(char::is_numeric), str_to_num_json)(i)
 }
 
 fn field(i: &str) -> IResult<&str, Field> {
@@ -94,6 +98,9 @@ fn object(i: &str) -> IResult<&str, Json> {
     )(i)
 }
 
+
+
+
 fn value(i: &str) -> IResult<&str, Json> {
     preceded(sp,
              alt((
@@ -118,7 +125,7 @@ fn obj_to_val(v: Vec<Field>) -> Result<Json, Err<String>> {
     Ok(Json::Object(v))
 }
 
-fn str_to_num(v: &str) -> Result<Json, ParseIntError> {
+fn str_to_num_json(v: &str) -> Result<Json, ParseIntError> {
     let res: i64 = v.parse()?;
     Ok(Json::Num(res))
 }
@@ -129,11 +136,15 @@ fn str_to_str(v: &str) -> Result<&str, Err<String>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parser::{boolean, escaped_string, string, limiter, num, array, field, object};
+    use crate::parser::json::{boolean, escaped_string, string, limiter, num, array, field, object};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
     use crate::parser::{Json, Field};
     use crate::parser::Json::{Array, Num, Object};
+    use crate::generator::generators::Sequence;
+    use crate::generator::{new, Generator, next};
+    use std::rc::Rc;
+    use std::cell::RefCell;
 
     #[test]
     fn bool_test() {
@@ -186,11 +197,13 @@ mod tests {
                            value: Object(vec![Field {
                                name: "final_field".to_string(),
                                value: Num(42),
-                               g: 0
+                               g: None,
                            }]),
-                           g: 0
+                           g: None,
                        }]),
-                       g: 0
+                       g: None,
                    }]))));
     }
+
+
 }

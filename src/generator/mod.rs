@@ -9,9 +9,22 @@ use std::ops::Range;
 use rand::Rng;
 use rand::distributions::Alphanumeric;
 use uuid::Uuid;
+use std::cell::RefCell;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+use std::rc::Rc;
 
-trait Generator {
+pub trait Generator {
     fn next(&mut self) -> Json;
+}
+pub type Gen<T:Generator> = Rc<RefCell<T>>;
+
+pub fn new<T:Generator>(entity: T) -> Gen<T>{
+    Rc::new(RefCell::new(entity))
+}
+
+pub fn next<T:Generator>(g: Gen<T>) -> Json{
+    RefCell::borrow_mut(&g).next()
 }
 
 pub struct Generators {
@@ -24,13 +37,13 @@ impl Generators {
         Generators { idx: 0, delegate: HashMap::new() }
     }
 
-    pub fn add_generator(&mut self, g: Box<dyn Generator>) -> Result<usize, String> {
+    pub fn add(&mut self, g: Box<dyn Generator>) -> Result<usize, String> {
         self.idx += 1;
         self.delegate.insert(self.idx, g);
         Ok(self.idx)
     }
 
-    pub fn generate(&mut self, idx: usize) -> Result<Json, String> {
+    pub fn next(&mut self, idx: usize) -> Result<Json, String> {
         match self.delegate.get_mut(&idx) {
             None => Err("the key not found".to_string()),
             Some(g) => Ok(g.next()),
@@ -47,10 +60,10 @@ mod tests {
     #[test]
     fn test() {
         let mut generators = Generators::new();
-        if let Ok(i1) = generators.add_generator(Box::from(Constant { value: "test".to_string() })) {
-            if let Ok(i2) = generators.add_generator(Box::from(Constant { value: 1 as i64 })) {
-                assert_eq!(generators.generate(i1), Ok(Json::Str("test".to_string())));
-                assert_eq!(generators.generate(i2), Ok(Json::Num(1)));
+        if let Ok(i1) = generators.add(Box::from(Constant { value: "test".to_string() })) {
+            if let Ok(i2) = generators.add(Box::from(Constant { value: 1 as i64 })) {
+                assert_eq!(generators.next(i1), Ok(Json::Str("test".to_string())));
+                assert_eq!(generators.next(i2), Ok(Json::Num(1)));
             } else {
                 assert_eq!(true, false)
             }

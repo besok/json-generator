@@ -1,7 +1,10 @@
 use std::fmt::{Debug, Formatter, Error};
+use crate::generator::Generator;
+use std::rc::Rc;
+use std::cell::RefCell;
 
-pub mod parser;
-
+pub mod json;
+pub mod generator;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Json {
@@ -14,16 +17,31 @@ pub enum Json {
 }
 
 
-#[derive( Clone, Debug, PartialEq)]
+#[derive( Clone )]
 pub struct Field {
     name: String,
     value: Json,
-    g: usize,
+    g: Option<Rc<RefCell<dyn Generator>>>,
+}
+
+impl Debug for Field{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        f.write_str(self.name.as_str());
+        f.write_str(":");
+        f.write_str(self.value.to_string().as_str())
+    }
+}
+
+impl PartialEq for Field{
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.value == other.value
+
+    }
 }
 
 impl Field {
     fn new(name: String, value: Json) -> Self {
-        Field { name, value, g: 0 }
+        Field { name, value, g: None }
     }
 }
 

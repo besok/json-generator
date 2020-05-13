@@ -14,7 +14,6 @@
       6
     ],
     "address": {
-      /* constStr("the same") */
       "street": "Grip",
       /* randomInt(1,1000) */
       "house": 10,

@@ -1,4 +1,4 @@
-use crate::generator::Generator;
+use crate::generator::{Generator, Gen};
 use crate::parser::Json;
 use rand::distributions::Alphanumeric;
 use rand::prelude::ThreadRng;
@@ -12,6 +12,8 @@ use std::str::FromStr;
 use std::num::ParseIntError;
 use std::string::ParseError;
 use std::fmt::Debug;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Null {}
 
@@ -43,7 +45,7 @@ impl<T:Into<Json>+Clone> Generator for Constant<T> {
 }
 
 pub struct Sequence {
-    val: usize
+    pub val: usize
 }
 
 pub struct UUID {}
@@ -187,6 +189,20 @@ fn read_file_into_string(path: &str) -> Result<String, Error> {
 }
 
 
+struct Array{
+    len:usize,
+    g : Box<dyn Generator>,
+}
+
+impl Generator for Array{
+    fn next(&mut self) -> Json {
+        Json::Array(
+            (0..self.len).map(|_| self.g.next()).collect()
+        )
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::parser::Json;
@@ -286,4 +302,5 @@ mod tests {
             Err(_) => panic!("error, should be ok"),
         };
     }
+
 }
