@@ -22,17 +22,16 @@ use self::nom::error::ErrorKind;
 use crate::generator::generators::{Sequence};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::generator::{Gen, new};
 
 pub fn is_space(c: char) -> bool {
     c == ' ' || c == '\t' || c == '\r' || c == '\n'
 }
 
-fn sp(i: &str) -> IResult<&str, &str> {
+pub fn sp(i: &str) -> IResult<&str, &str> {
     take_while(is_space)(i)
 }
 
-fn is_string_character(c: char) -> bool {
+pub fn is_string_character(c: char) -> bool {
     c != '"' && c != '\\'
 }
 
@@ -142,7 +141,7 @@ mod tests {
     use crate::parser::{Json, Field};
     use crate::parser::Json::{Array, Num, Object};
     use crate::generator::generators::Sequence;
-    use crate::generator::{new, Generator, next};
+    use crate::generator::{ GeneratorFunc};
     use std::rc::Rc;
     use std::cell::RefCell;
 

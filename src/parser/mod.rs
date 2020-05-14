@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter, Error};
-use crate::generator::Generator;
+use crate::generator::GeneratorFunc;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -21,7 +21,7 @@ pub enum Json {
 pub struct Field {
     name: String,
     value: Json,
-    g: Option<Rc<RefCell<dyn Generator>>>,
+    g: Option<Rc<RefCell<dyn GeneratorFunc>>>,
 }
 
 impl Debug for Field{

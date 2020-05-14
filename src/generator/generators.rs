@@ -1,4 +1,4 @@
-use crate::generator::{Generator, Gen};
+use crate::generator::{GeneratorFunc, Generator};
 use crate::parser::Json;
 use rand::distributions::Alphanumeric;
 use rand::prelude::ThreadRng;
@@ -15,9 +15,11 @@ use std::fmt::Debug;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+
+
 pub struct Null {}
 
-impl Generator for Null {
+impl GeneratorFunc for Null {
     fn next(&mut self) -> Json {
         Json::Null
     }
@@ -38,7 +40,7 @@ impl Into<Json> for i64{
     }
 }
 
-impl<T:Into<Json>+Clone> Generator for Constant<T> {
+impl<T:Into<Json>+Clone> GeneratorFunc for Constant<T> {
     fn next(&mut self) -> Json {
         self.value.clone().into()
     }
@@ -50,13 +52,13 @@ pub struct Sequence {
 
 pub struct UUID {}
 
-impl Generator for UUID {
+impl GeneratorFunc for UUID {
     fn next(&mut self) -> Json {
         Json::Str(format!("{}", Uuid::new_v4()))
     }
 }
 
-impl Generator for Sequence {
+impl GeneratorFunc for Sequence {
     fn next(&mut self) -> Json {
         self.val += 1;
         Json::Num(self.val as i64)
@@ -75,7 +77,7 @@ impl RandomInt {
     }
 }
 
-impl Generator for RandomInt {
+impl GeneratorFunc for RandomInt {
     fn next(&mut self) -> Json {
         Json::Num(
             self.rng.gen_range(self.start, self.end)
@@ -95,7 +97,7 @@ impl RandomString {
 }
 
 
-impl Generator for RandomString {
+impl GeneratorFunc for RandomString {
     fn next(&mut self) -> Json {
         Json::Str(
             self.rng
@@ -105,11 +107,11 @@ impl Generator for RandomString {
     }
 }
 
-struct CurrentDateTime {
-    format: String
+pub struct CurrentDateTime {
+    pub format: String
 }
 
-impl Generator for CurrentDateTime {
+impl GeneratorFunc for CurrentDateTime {
     fn next(&mut self) -> Json {
         let time = Utc::now();
         Json::Str(
@@ -135,7 +137,7 @@ impl<T:Into<Json> + Clone> RandomFromList<T> {
 
 
 
-impl<T> Generator for RandomFromList<T>
+impl<T> GeneratorFunc for RandomFromList<T>
     where T:Into<Json> + Clone{
     fn next(&mut self) -> Json {
         match self.values.choose(&mut self.rng) {
@@ -166,7 +168,7 @@ impl<T: FromStr + Clone + Into<Json>> RandomFromFile<T>
     }
 }
 
-impl<T: Clone + FromStr + Into<Json>> Generator for RandomFromFile<T>
+impl<T: Clone + FromStr + Into<Json>> GeneratorFunc for RandomFromFile<T>
     where <T as FromStr>::Err: Debug{
     fn next(&mut self) -> Json {
         self.g.next()
@@ -191,10 +193,10 @@ fn read_file_into_string(path: &str) -> Result<String, Error> {
 
 struct Array{
     len:usize,
-    g : Box<dyn Generator>,
+    g : Box<dyn GeneratorFunc>,
 }
 
-impl Generator for Array{
+impl GeneratorFunc for Array{
     fn next(&mut self) -> Json {
         Json::Array(
             (0..self.len).map(|_| self.g.next()).collect()
@@ -207,7 +209,7 @@ impl Generator for Array{
 mod tests {
     use crate::parser::Json;
     use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, from_string, RandomFromFile};
-    use crate::generator::Generator;
+    use crate::generator::GeneratorFunc;
     use std::io::Error;
 
     #[test]
