@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn uuid_test() {
         if let Ok((_, el)) = uuid("uuid()") {
-            let field = Field { g: Some(el.get()), name: "".to_string(), value: Json::Null };
+            let field = Field { g: Some(el.clone()), name: "".to_string(), value: Json::Null };
             if let Json::Str(el) = el.next() {
                 assert_eq!(el.len(), 36)
             }

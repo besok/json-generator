@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter, Error};
-use crate::generator::GeneratorFunc;
+use crate::generator::{GeneratorFunc, Generator};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -21,7 +21,7 @@ pub enum Json {
 pub struct Field {
     name: String,
     value: Json,
-    g: Option<Rc<RefCell<dyn GeneratorFunc>>>,
+    g: Option<Generator>,
 }
 
 impl Debug for Field{
@@ -65,9 +65,7 @@ impl ToString for Json {
 }
 
 fn vec_to_string<V: ToString>(arr: &Vec<V>) -> String {
-    arr.iter()
-        .map(ToString::to_string)
-        .fold(String::new(), join)
+    arr.iter().map(ToString::to_string).fold(String::new(), join)
 }
 
 fn join(a: String, b: String) -> String {

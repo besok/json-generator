@@ -15,8 +15,6 @@ use std::fmt::Debug;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-
-
 pub struct Null {}
 
 impl GeneratorFunc for Null {

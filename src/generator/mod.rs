@@ -18,9 +18,14 @@ pub trait GeneratorFunc {
     fn next(&mut self) -> Json;
 }
 
-
 pub struct Generator {
     delegate: Rc<RefCell<dyn GeneratorFunc>>
+}
+
+impl Clone for Generator{
+    fn clone(&self) -> Self {
+        Generator{ delegate: self.delegate.clone() }
+    }
 }
 
 impl Generator  {
@@ -30,12 +35,7 @@ impl Generator  {
     pub fn next(&self) -> Json {
         RefCell::borrow_mut(&self.delegate).next()
     }
-    pub fn get(&self) -> Rc<RefCell<dyn GeneratorFunc>> {
-        self.delegate.clone()
-    }
 }
-
-
 
 #[cfg(test)]
 mod tests {
