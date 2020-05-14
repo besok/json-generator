@@ -1,7 +1,5 @@
 use std::fmt::{Debug, Formatter, Error};
-use crate::generator::{GeneratorFunc, Generator};
-use std::rc::Rc;
-use std::cell::RefCell;
+use crate::generator::{ Generator};
 
 pub mod json;
 pub mod generator;
@@ -42,6 +40,9 @@ impl PartialEq for Field{
 impl Field {
     fn new(name: String, value: Json) -> Self {
         Field { name, value, g: None }
+    }
+    fn new_with_gen(name: String, value: Json, g: Generator) -> Self {
+        Field { name, value, g: Some(g)}
     }
 }
 

@@ -11,17 +11,14 @@ use nom::{
     sequence::{delimited, preceded, separated_pair, terminated, pair},
     Err, IResult, HexDisplay,
 };
-use self::nom::Err::Error;
 use crate::parser::{Json, Field};
 use self::nom::character::complete::none_of;
 use self::nom::bytes::complete::is_not;
 use self::nom::character::is_digit;
-use std::str::FromStr;
 use std::num::ParseIntError;
-use self::nom::error::ErrorKind;
-use crate::generator::generators::{Sequence};
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::generator::Generator;
+use crate::parser::generator::generator;
+use self::nom::combinator::map_parser;
 
 pub fn is_space(c: char) -> bool {
     c == ' ' || c == '\t' || c == '\r' || c == '\n'
@@ -63,11 +60,21 @@ fn num(i: &str) -> IResult<&str, Json> {
 }
 
 fn field(i: &str) -> IResult<&str, Field> {
-    match separated_pair(preceded(sp, key),
-                         cut(preceded(sp, char(':'))),
-                         value)(i) {
-        Ok((s, (n, j))) => Ok((s, Field::new(n.to_string(), j))),
-        Result::Err(x) => Result::Err(x)
+    let f = separated_pair(preceded(sp, key),
+                           cut(preceded(sp, char(':'))),
+                           value);
+
+    if let Ok((rest, g_opt)) = generator_opt(i) {
+        match (f(i), g_opt) {
+            (Ok((s, (n, j))), Some(g)) => Ok((s, Field::new_with_gen(n.to_string(), j,g.clone()))),
+            (Ok((s, (n, j))), None) => Ok((s, Field::new(n.to_string(), j))),
+            (Result::Err(x), _) => Result::Err(x)
+        }
+    } else {
+        match f(i) {
+            Ok((s, (n, j))) => Ok((s, Field::new(n.to_string(), j))),
+            Result::Err(x) => Result::Err(x)
+        }
     }
 }
 
@@ -98,8 +105,6 @@ fn object(i: &str) -> IResult<&str, Json> {
 }
 
 
-
-
 fn value(i: &str) -> IResult<&str, Json> {
     preceded(sp,
              alt((
@@ -108,8 +113,17 @@ fn value(i: &str) -> IResult<&str, Json> {
     )(i)
 }
 
-fn limiter(i: &str) -> IResult<&str, &str> {
-    preceded(tag("/*"), cut(terminated(is_not("/**/"), tag("*/"))))(i)
+
+fn generator_opt(i: &str) -> IResult<&str, Option<Generator>> {
+    opt(generator_func)(i)
+}
+
+fn generator_func(i: &str) -> IResult<&str, Generator> {
+    preceded(tag("/*"),
+             terminated(
+                 map_parser(is_not("/**/"), generator),
+                 tag("*/")),
+    )(i)
 }
 
 fn str_to_val(v: &str) -> Result<Json, Err<String>> {
@@ -135,15 +149,11 @@ fn str_to_str(v: &str) -> Result<&str, Err<String>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::json::{boolean, escaped_string, string, limiter, num, array, field, object};
+    use crate::parser::json::{boolean, escaped_string, string, generator_func, num, array, field, object};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
     use crate::parser::{Json, Field};
     use crate::parser::Json::{Array, Num, Object};
-    use crate::generator::generators::Sequence;
-    use crate::generator::{ GeneratorFunc};
-    use std::rc::Rc;
-    use std::cell::RefCell;
 
     #[test]
     fn bool_test() {
@@ -166,8 +176,21 @@ mod tests {
 
     #[test]
     fn limiter_test() {
-        assert_eq!(limiter("/*a bc*/"), Ok(("", "a bc")));
-        assert_eq!(limiter("/*a bc*/ /n sde"), Ok((" /n sde", "a bc")));
+        if let Ok((_, g)) = generator_func("/* sequence(10) */") {
+            assert_eq!(Json::Num(11), g.next())
+        } else {
+            panic!("should be ok")
+        }
+
+        if let Ok((_, g)) = generator_func("/*uuid()*/") {
+            if let Json::Str(uuid) = g.next() {
+                assert_eq!(uuid.len(), 36)
+            } else {
+                panic!("should be ok")
+            }
+        } else {
+            panic!("should be ok")
+        }
     }
 
     #[test]
@@ -184,6 +207,9 @@ mod tests {
     #[test]
     fn field_test() {
         assert_eq!(field(r#""field":"string""#), Ok(("", Field::new("field".to_string(), Json::Str("string".to_string())))));
+        assert_eq!(field(r#"
+        /* sequence(10) */ "field":"string""#),
+                   Ok(("", Field::new("field".to_string(), Json::Str("string".to_string())))));
     }
 
     #[test]
@@ -203,6 +229,4 @@ mod tests {
                        g: None,
                    }]))));
     }
-
-
 }

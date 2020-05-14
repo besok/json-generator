@@ -34,11 +34,11 @@ fn sequence(i: &str) -> IResult<&str, Generator> {
 
 fn uuid(i: &str) -> IResult<&str, Generator> {
     map_res(tag("uuid()"), |_: &str| {
-        res(UUID {})
+        new(UUID {})
     })(i)
 }
 
-fn generator(i: &str) -> IResult<&str, Generator> {
+pub fn generator(i: &str) -> IResult<&str, Generator> {
     preceded(sp,
              alt((
                  uuid, sequence
@@ -46,7 +46,7 @@ fn generator(i: &str) -> IResult<&str, Generator> {
 }
 
 
-fn res<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
+fn new<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
     Ok(Generator::new(gf))
 }
 
