@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter, Error};
-use crate::generator::{ Generator};
+use crate::generator::Generator;
 
 pub mod json;
 pub mod generator;
@@ -15,14 +15,14 @@ pub enum Json {
 }
 
 
-#[derive( Clone )]
+#[derive(Clone)]
 pub struct Field {
     name: String,
     value: Json,
     g: Option<Generator>,
 }
 
-impl Debug for Field{
+impl Debug for Field {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.write_str(self.name.as_str());
         f.write_str(":");
@@ -30,10 +30,9 @@ impl Debug for Field{
     }
 }
 
-impl PartialEq for Field{
+impl PartialEq for Field {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.value == other.value
-
     }
 }
 
@@ -42,7 +41,7 @@ impl Field {
         Field { name, value, g: None }
     }
     fn new_with_gen(name: String, value: Json, g: Generator) -> Self {
-        Field { name, value, g: Some(g)}
+        Field { name, value, g: Some(g) }
     }
 }
 

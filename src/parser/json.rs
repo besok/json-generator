@@ -19,6 +19,7 @@ use std::num::ParseIntError;
 use crate::generator::Generator;
 use crate::parser::generator::generator;
 use self::nom::combinator::map_parser;
+use self::nom::error::ErrorKind;
 
 pub fn is_space(c: char) -> bool {
     c == ' ' || c == '\t' || c == '\r' || c == '\n'
@@ -60,21 +61,24 @@ fn num(i: &str) -> IResult<&str, Json> {
 }
 
 fn field(i: &str) -> IResult<&str, Field> {
-    let f = separated_pair(preceded(sp, key),
-                           cut(preceded(sp, char(':'))),
-                           value);
+    let field =
+        separated_pair(preceded(sp, key),
+                       cut(preceded(sp, char(':'))),
+                       value);
 
-    if let Ok((rest, g_opt)) = generator_opt(i) {
-        match (f(i), g_opt) {
-            (Ok((s, (n, j))), Some(g)) => Ok((s, Field::new_with_gen(n.to_string(), j,g.clone()))),
-            (Ok((s, (n, j))), None) => Ok((s, Field::new(n.to_string(), j))),
-            (Result::Err(x), _) => Result::Err(x)
-        }
-    } else {
-        match f(i) {
-            Ok((s, (n, j))) => Ok((s, Field::new(n.to_string(), j))),
-            Result::Err(x) => Result::Err(x)
-        }
+
+    match generator_opt(i) {
+        Ok((rest, Some(g))) =>
+            match field(rest) {
+                Ok((s, (n, j))) => Ok((s, Field::new_with_gen(n.to_string(), j, g.clone()))),
+                Result::Err(x) => Result::Err(x)
+            }
+        _ =>
+            match field(i) {
+                Ok((s, (n, j))) => Ok((s, Field::new(n.to_string(), j))),
+                Result::Err(x) => Result::Err(x)
+            }
+        ,
     }
 }
 
@@ -119,11 +123,11 @@ fn generator_opt(i: &str) -> IResult<&str, Option<Generator>> {
 }
 
 fn generator_func(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("/*"),
-             terminated(
-                 map_parser(is_not("/**/"), generator),
-                 tag("*/")),
-    )(i)
+    preceded(sp, preceded(tag("/*"),
+                          terminated(
+                              map_parser(is_not("/**/"), generator),
+                              tag("*/")),
+    ))(i)
 }
 
 fn str_to_val(v: &str) -> Result<Json, Err<String>> {
@@ -149,11 +153,13 @@ fn str_to_str(v: &str) -> Result<&str, Err<String>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::json::{boolean, escaped_string, string, generator_func, num, array, field, object};
+    use crate::parser::json::{boolean, escaped_string, string, generator_func, num, array, field, object, generator_opt};
     use super::nom::Err::Error;
     use super::nom::error::ErrorKind::Tag;
     use crate::parser::{Json, Field};
     use crate::parser::Json::{Array, Num, Object};
+    use super::nom::error::ErrorKind;
+    use crate::generator::Generator;
 
     #[test]
     fn bool_test() {
@@ -207,9 +213,42 @@ mod tests {
     #[test]
     fn field_test() {
         assert_eq!(field(r#""field":"string""#), Ok(("", Field::new("field".to_string(), Json::Str("string".to_string())))));
-        assert_eq!(field(r#"
-        /* sequence(10) */ "field":"string""#),
-                   Ok(("", Field::new("field".to_string(), Json::Str("string".to_string())))));
+        let f = field(r#"
+        /* sequence(10) */
+        "field":"string"
+        "#);
+        assert_eq!(f,
+                   Ok(("\n        ", Field::new("field".to_string(), Json::Str("string".to_string()))))
+        );
+
+        let (_,field) = f.unwrap();
+        let g = field.g.clone().unwrap();
+        assert_eq!(g.next(), Json::Num(11));
+    }
+
+
+    #[test]
+    fn generator_opt_test() {
+        match generator_opt(r#"/*
+                                     sequence(10) */ "#) {
+            Ok((_, Some(g))) => assert_eq!(Json::Num(11), g.next()),
+            r @ _ => panic!("{:?}", r)
+        }
+        match generator_opt(r#"sequence(10) */"#) {
+            Ok((_, None)) => (),
+            r @ _ => panic!("{:?}", r)
+        }
+        match generator_opt(r#"
+        /* sequence(10) */
+        "field":"string"
+        "#) {
+            Ok((s, Some(_))) => {
+                assert_eq!(s, r#"
+        "field":"string"
+        "#)
+            }
+            r @ _ => panic!("{:?}", r)
+        }
     }
 
     #[test]
