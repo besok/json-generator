@@ -221,7 +221,7 @@ mod tests {
                    Ok(("\n        ", Field::new("field".to_string(), Json::Str("string".to_string()))))
         );
 
-        let (_,field) = f.unwrap();
+        let (_, field) = f.unwrap();
         let g = field.g.clone().unwrap();
         assert_eq!(g.next(), Json::Num(11));
     }
@@ -251,6 +251,7 @@ mod tests {
         }
     }
 
+
     #[test]
     fn object_test() {
         assert_eq!(object(r#"{"field": {"next_field": {"final_field": 42}}}"#),
@@ -267,5 +268,19 @@ mod tests {
                        }]),
                        g: None,
                    }]))));
+        let res = object(r#"{
+    /* sequence(10) */
+    "id": 1
+    }"#);
+
+        if let Ok((_, Json::Object(f))) = res {
+            if let Some(field) = f.get(0) {
+                assert_eq!(field.get_next(), Some(Json::Num(11)))
+            } else {
+                panic!("should be ok");
+            }
+        } else {
+            panic!("should be ok");
+        }
     }
 }

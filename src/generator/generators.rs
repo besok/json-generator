@@ -89,7 +89,7 @@ pub struct RandomString {
 }
 
 impl RandomString {
-    fn new(len: usize) -> Self {
+    pub fn new(len: usize) -> Self {
         RandomString { len, rng: rand::thread_rng() }
     }
 }
