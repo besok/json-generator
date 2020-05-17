@@ -15,7 +15,24 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use crate::parser::json::sp;
+use nom::bytes::complete::is_not;
 
+
+fn current_dt(i: &str) -> IResult<&str, Generator> {
+    preceded(tag("currentDateTame("),
+             terminated(
+                 map_res(take_while(|c| c != ')'),
+                         |s: &str| {
+                             let format =
+                                 if s.len() < 3 {
+                                     "%Y-%m-%d %H:%M:%S".to_string()
+                                 } else { s.to_string() };
+                             new(CurrentDateTime { format })
+                         })
+                 , char(')'),
+             ),
+    )(i)
+}
 
 fn sequence(i: &str) -> IResult<&str, Generator> {
     preceded(tag("sequence("),
@@ -66,8 +83,10 @@ impl Display for GenError {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{sequence, uuid, generator};
+    use crate::parser::generator::{sequence, uuid, generator, current_dt};
     use crate::parser::{Json, Field};
+    use nom::error::ErrorKind;
+    use crate::generator::Generator;
 
     #[test]
     fn seq_gen_test() {
@@ -89,6 +108,28 @@ mod tests {
     }
 
     #[test]
+    fn current_dt_test() {
+        match current_dt("currentDateTame()") {
+            Ok((_, el)) =>
+                if let Json::Str(s) = el.next() {
+                    assert_eq!(19, s.len())
+                } else {
+                    panic!("")
+                },
+            Err(e) => panic!("{}", e),
+        }
+        match current_dt("currentDateTame(%Y-%m-%d)") {
+            Ok((_, el)) =>
+                if let Json::Str(s) = el.next() {
+                    assert_eq!(10, s.len())
+                } else {
+                    panic!("")
+                },
+            Err(e) => panic!("{}", e),
+        }
+    }
+
+    #[test]
     fn generator_test() {
         if let Ok((_, gen)) = generator(" uuid() ") {
             if let Json::Str(uuid) = gen.next() {
@@ -99,7 +140,6 @@ mod tests {
         } else {
             panic!("panic!")
         }
-
 
 
         if let Ok((_, gen)) = generator("sequence(1)") {

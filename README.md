@@ -45,5 +45,5 @@
     - constStr : string 
     - constInt : i64 
     - uuid 
-    -. currentDateTame : string with format
+    - currentDateTame : string with format
     
