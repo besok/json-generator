@@ -109,7 +109,7 @@ fn object(i: &str) -> IResult<&str, Json> {
 }
 
 
-fn value(i: &str) -> IResult<&str, Json> {
+pub fn value(i: &str) -> IResult<&str, Json> {
     preceded(sp,
              alt((
                  boolean, null, num, array, string, object

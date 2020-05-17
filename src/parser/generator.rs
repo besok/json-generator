@@ -75,8 +75,7 @@ impl Error for GenError {}
 
 impl Display for GenError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        f.write_str("error while parsing a generator func");
-        Ok(())
+        write!(f,"error while parsing a generator func")
     }
 }
 

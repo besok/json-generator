@@ -1,5 +1,9 @@
-use std::fmt::{Debug, Formatter, Error};
+use std::fmt::{Debug, Formatter, Display};
 use crate::generator::Generator;
+use crate::parser::json::value;
+use crate::parser::generator::GenError;
+use std::error::Error;
+use nom::error::ErrorKind;
 
 pub mod json;
 pub mod generator;
@@ -35,10 +39,9 @@ pub struct Field {
 }
 
 impl Debug for Field {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_str(self.name.as_str());
-        f.write_str(":");
-        f.write_str(self.value.to_string().as_str())
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f,"{}:",self.name.as_str());
+        write!(f,"{}",self.value.to_string())
     }
 }
 
@@ -49,7 +52,7 @@ impl PartialEq for Field {
 }
 
 impl Field {
-    fn new(name: String, value: Json) -> Self {
+    pub fn new(name: String, value: Json) -> Self {
         Field { name, value, g: None }
     }
     fn new_from_gen(name: String, g: Generator) -> Self {
@@ -100,6 +103,25 @@ fn join(a: String, b: String) -> String {
     if a.is_empty() { format!("{}", b) } else { format!("{},{}", a, b) }
 }
 
+#[derive(Debug)]
+pub struct ParserError {
+    cause: String
+}
+
+impl Error for ParserError {}
+
+impl Display for ParserError{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f,"{}",self.cause)
+    }
+}
+
+pub fn parse_json(json: &str) -> Result<Json,ParserError>{
+    match value(json){
+        Ok((_,js_res)) => Ok(js_res),
+        Err(e) => Err(ParserError{cause:format!("{:?}",e)}),
+    }
+}
 
 #[cfg(test)]
 mod tests {
