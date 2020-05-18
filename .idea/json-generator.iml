@@ -6,6 +6,15 @@
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/../json-generator\benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/mock-server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/mockserver/mock-server\examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/mockserver/mock-server\tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/mockserver/mock-server\benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/mock-server\examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/mock-server\tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/mock-server\benches" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/mock-server/target" />
+      <excludeFolder url="file://$MODULE_DIR$/mockserver/mock-server\target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

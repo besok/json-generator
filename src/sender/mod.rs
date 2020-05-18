@@ -1,5 +1,7 @@
 use crate::parser::Json;
 
+mod http;
+
 #[cfg(windows)]
 const S: &'static str = "\r\n";
 #[cfg(not(windows))]
@@ -25,7 +27,6 @@ impl ToString for PrettyJson {
         }
     }
 }
-
 
 fn smcln(str: String) -> String {
     let mut res = str;
@@ -60,7 +61,8 @@ mod tests {
         match parse_json(js) {
             Ok(json) => {
                 let pretty_js = PrettyJson::new(json).to_string();
-                assert_eq!("{\r\n\"person\":{\r\n\"id\":1,\r\n\"name\":\"Eli\\\"za\\\"beth\",\r\n\"surname\":\"E\",\r\n\"age\":10,\r\n\"children\":[\r\n3,\r\n6\r\n],\r\n\"address\":{\r\n\"street\":\"Grip\",\r\n\"house\":10,\r\n\"city\":\"Berlin\"\r\n}\r\n}\r\n}", pretty_js)
+                assert_eq!("{\r\n\"person\":{\r\n\"id\":1,\r\n\"name\":\"Eli\\\"za\\\"beth\",\r\n\"surname\":\"E\",\r\n\"age\":10,\r\n\"children\":[\r\n3,\r\n6\r\n],\r\n\"address\":{\r\n\"street\":\"Grip\",\r\n\"house\":10,\r\n\"city\":\"Berlin\"\r\n}\r\n}\r\n}",
+                           pretty_js)
             }
             Err(e) => panic!("{}", e),
         };
