@@ -9,7 +9,7 @@ fn main() {
     let server = Server::new(|request, mut response| {
         let body = str::from_utf8(request.body()).unwrap();
         println!("{:?}",body);
-        Ok(response.body("Hello Rust!".as_bytes().to_vec())?)
+        Ok(response.body(body.as_bytes().to_vec())?)
     });
 
     server.listen(host, port);

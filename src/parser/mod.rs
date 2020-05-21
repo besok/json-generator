@@ -20,7 +20,7 @@ pub enum Json {
 
 
 impl Json {
-    fn next(&self) -> Json {
+    pub fn next(&self) -> Json {
         match self {
             Json::Object(fields) =>
                 Json::Object(fields.iter().map(Field::next).collect()),

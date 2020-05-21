@@ -182,7 +182,7 @@ fn from_string<T: FromStr>(v: String, d: &str) -> Vec<T>
         .collect()
 }
 
-fn read_file_into_string(path: &str) -> Result<String, Error> {
+pub fn read_file_into_string(path: &str) -> Result<String, Error> {
     let mut contents = String::new();
     File::open(path)?.read_to_string(&mut contents)?;
     Ok(contents)

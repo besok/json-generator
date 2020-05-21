@@ -1,6 +1,7 @@
 use crate::parser::Json;
 
 mod http;
+mod file;
 
 #[cfg(windows)]
 const S: &'static str = "\r\n";
@@ -10,6 +11,10 @@ const S: &'static str = "\n";
 
 pub struct PrettyJson {
     delegate: Json
+}
+
+pub trait Sender {
+    fn send(&self, json: String) -> Result<String, String>;
 }
 
 impl PrettyJson {
