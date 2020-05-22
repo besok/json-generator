@@ -6,11 +6,11 @@ use std::io::Error;
 
 
 pub struct CurlSender {
-    cmd: String
+    pub cmd: String
 }
 
 impl Sender for CurlSender {
-    fn send(&self, json: String) -> Result<String, String> {
+    fn send(&mut self, json: String) -> Result<String, String> {
         match curl(self.cmd.as_str(), json.as_str()) {
             Ok(o) => Ok(format!("{:?}", o)),
             Err(e) => Err(e.to_string()),

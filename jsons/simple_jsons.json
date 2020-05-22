@@ -1,16 +1,7 @@
-
 {
-  "person":{
-    "id":1,
-    "name":"Eli\"za\"beth",
-    "surname":"E",
-    "age":10,
-    "children":[3,
-      6],
-    "address":{
-      "street":"Grip",
-      "house":10,
-      "city":"Berlin"
-    }
-  }
+  /* sequence(1) */
+  "field_1": 1,
+  /* uuid() */
+  "field_2": "field",
+  "field_3": "field_3"
 }

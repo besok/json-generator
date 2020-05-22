@@ -19,11 +19,16 @@ pub trait GeneratorFunc {
     fn next(&mut self) -> Json;
 }
 
-impl ToString for dyn GeneratorFunc{
+pub fn print_type_of<T>(_: &T) -> String {
+    format!("{}", std::any::type_name::<T>())
+}
+
+impl ToString for dyn GeneratorFunc {
     fn to_string(&self) -> String {
-        format!("GeneratorFunc[{:?}]",self.type_id())
+        format!("GeneratorFunc[{:?}]", print_type_of(&self))
     }
 }
+
 impl Debug for dyn GeneratorFunc {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.write_str(self.to_string().as_str());
@@ -36,21 +41,22 @@ pub struct Generator {
     delegate: Rc<RefCell<dyn GeneratorFunc>>
 }
 
-impl ToString for Generator{
+impl ToString for Generator {
     fn to_string(&self) -> String {
-        format!("Generator[{:?}]",self.delegate.clone().borrow().to_string())
+        format!("Generator[{:?}]", self.delegate.clone().borrow().to_string())
     }
 }
 
 
-impl Clone for Generator{
+impl Clone for Generator {
     fn clone(&self) -> Self {
-        Generator{ delegate: self.delegate.clone() }
+        Generator { delegate: self.delegate.clone() }
     }
 }
 
-impl Generator  {
-    pub fn new<T:GeneratorFunc + 'static>(entity: T) -> Self {
+impl Generator {
+    pub fn new<T: GeneratorFunc + 'static>(entity: T) -> Self {
+        info!("create a generator({})", print_type_of(&entity));
         Generator { delegate: Rc::new(RefCell::new(entity)) }
     }
     pub fn next(&self) -> Json {
@@ -59,12 +65,8 @@ impl Generator  {
 }
 
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::parser::Json;
     use crate::generator::generators::Constant;
-
-
 }
