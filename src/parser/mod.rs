@@ -78,7 +78,7 @@ impl Field {
 
 impl ToString for Field {
     fn to_string(&self) -> String {
-        format!(r#""{}":{}"#, self.name, self.value.to_string())
+        format!(r#""{}": {}"#, self.name, self.value.to_string())
     }
 }
 

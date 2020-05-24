@@ -46,11 +46,13 @@ impl Sender for FolderSender {
             .open(pb.as_path())
             .expect("problem with a file");
 
+
         if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
             Err(format!("error while appending to a file: {}", e.to_string()))
         } else {
+            let res = format!("the item {} has been sent to folder: {}", self.idx, self.path);
             self.idx += 1;
-            Ok("".to_string())
+            Ok(res)
         }
     }
 }
@@ -109,7 +111,8 @@ impl Sender for FileSender {
         if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
             Err(format!("error while appendiong a file: {}", e.to_string()))
         } else {
-            Ok("".to_string())
+            let res = format!("the item has been sent to file: {}", self.path);
+            Ok(res)
         }
     }
 }

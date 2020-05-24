@@ -70,7 +70,7 @@ pub struct RandomInt {
 }
 
 impl RandomInt {
-    fn new(start: i64, end: i64) -> Self {
+    pub fn new(start: i64, end: i64) -> Self {
         RandomInt { start, end, rng: rand::thread_rng() }
     }
 }

@@ -70,7 +70,8 @@ fn field(i: &str) -> IResult<&str, Field> {
     match generator_opt(i) {
         Ok((rest, Some(g))) =>
             match field(rest) {
-                Ok((s, (n, j))) => Ok((s, Field::new_with_gen(n.to_string(), j, g.clone()))),
+                Ok((s, (n, j))) =>
+                    Ok((s, Field::new_with_gen(n.to_string(), j, g.clone()))),
                 Result::Err(x) => Result::Err(x)
             }
         _ =>
@@ -147,7 +148,7 @@ fn str_to_num_json(v: &str) -> Result<Json, ParseIntError> {
     Ok(Json::Num(res))
 }
 
-fn str_to_str(v: &str) -> Result<&str, Err<String>> {
+pub fn str_to_str(v: &str) -> Result<&str, Err<String>> {
     Ok(v)
 }
 

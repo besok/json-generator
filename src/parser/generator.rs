@@ -10,18 +10,29 @@ use nom::{
     Err, IResult, HexDisplay,
 };
 use crate::generator::{GeneratorFunc, Generator};
-use crate::generator::generators::{Sequence, UUID, CurrentDateTime};
+use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
-use crate::parser::json::sp;
+use crate::parser::json::{sp, str_to_str};
 use nom::bytes::complete::is_not;
 
 
+fn end_br(c: char) -> bool {
+    c != ')'
+}
+
+fn str_to_int(i: &str) -> IResult<&str, i64> {
+    map_res(take_while1(char::is_numeric), |s: &str| {
+        let res: Result<i64, ParseIntError> = s.parse();
+        res
+    })(i)
+}
+
 fn current_dt(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("currentDateTame("),
+    preceded(tag("current_date_time("),
              terminated(
-                 map_res(take_while(|c| c != ')'),
+                 map_res(take_while(end_br),
                          |s: &str| {
                              let format =
                                  if s.len() < 3 {
@@ -39,9 +50,8 @@ fn sequence(i: &str) -> IResult<&str, Generator> {
              terminated(
                  map_res(take_while1(char::is_numeric),
                          |s: &str| {
-                             let val: i64 = s.parse()?;
                              let res: Result<Generator, ParseIntError> =
-                                 Ok(Generator::new(Sequence { val: val as usize }));
+                                 Ok(Generator::new(Sequence { val: s.parse()? }));
                              res
                          })
                  , char(')'),
@@ -55,10 +65,42 @@ fn uuid(i: &str) -> IResult<&str, Generator> {
     })(i)
 }
 
+fn random_string(i: &str) -> IResult<&str, Generator> {
+    preceded(tag("random_str("),
+             terminated(
+                 map_res(take_while1(char::is_numeric),
+                         |s: &str| {
+                             let res: Result<Generator, ParseIntError> =
+                                 Ok(Generator::new(RandomString::new(s.parse()?)));
+                             res
+                         })
+                 , char(')'),
+             ),
+    )(i)
+}
+
+fn random_int(i: &str) -> IResult<&str, Generator> {
+    preceded(tag("random_int("),
+             terminated(
+                 map_res(separated_list(preceded(sp, char(',')), str_to_int),
+                         |v: Vec<i64>| {
+                             match v[..] {
+                                 [s, f] => new(RandomInt::new(s, f)),
+                                 _ => Err(GenError {})
+                             }
+                         }),
+                 preceded(sp, char(')')),
+             ),
+    )(i)
+}
+
 pub fn generator(i: &str) -> IResult<&str, Generator> {
     preceded(sp,
              alt((
-                 uuid, sequence
+                 uuid,
+                 sequence,
+                 random_string,
+                 random_int,
              )))(i)
 }
 
@@ -75,14 +117,14 @@ impl Error for GenError {}
 
 impl Display for GenError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f,"error while parsing a generator func")
+        write!(f, "error while parsing a generator func")
     }
 }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{sequence, uuid, generator, current_dt};
+    use crate::parser::generator::{sequence, uuid, generator, current_dt, random_string, random_int};
     use crate::parser::{Json, Field};
     use nom::error::ErrorKind;
     use crate::generator::Generator;
@@ -98,17 +140,46 @@ mod tests {
 
     #[test]
     fn uuid_test() {
-        if let Ok((_, el)) = uuid("uuid()") {
-            let field = Field { g: Some(el.clone()), name: "".to_string(), value: Json::Null };
-            if let Json::Str(el) = el.next() {
+        match uuid("uuid()") {
+            Ok((_, g)) =>
+                if let Json::Str(el) = g.next() {
                 assert_eq!(el.len(), 36)
+            } else {
+                panic!("test failed")
+            },
+            Err(e) => panic!("{}",e)
+        }
+    }
+
+    #[test]
+    fn random_string_test() {
+        if let Ok((_, el)) = random_string("random_str(10)") {
+            if let Json::Str(el) = el.next() {
+                assert_eq!(el.len(), 10)
+            } else {
+                panic!("test failed")
             }
+        } else {
+            panic!("test failed")
+        }
+    }
+
+    #[test]
+    fn random_int_test() {
+        if let Ok((_, el)) = random_int("random_int(10,20)") {
+            if let Json::Num(el) = el.next() {
+                assert_eq!(el > 9 && el < 20, true)
+            }else{
+                panic!("test failed")
+            }
+        } else {
+            panic!("test failed")
         }
     }
 
     #[test]
     fn current_dt_test() {
-        match current_dt("currentDateTame()") {
+        match current_dt("current_date_time()") {
             Ok((_, el)) =>
                 if let Json::Str(s) = el.next() {
                     assert_eq!(19, s.len())
@@ -117,7 +188,7 @@ mod tests {
                 },
             Err(e) => panic!("{}", e),
         }
-        match current_dt("currentDateTame(%Y-%m-%d)") {
+        match current_dt("current_date_time(%Y-%m-%d)") {
             Ok((_, el)) =>
                 if let Json::Str(s) = el.next() {
                     assert_eq!(10, s.len())

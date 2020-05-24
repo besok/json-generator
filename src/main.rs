@@ -16,56 +16,62 @@ mod generator;
 mod sender;
 
 fn main() {
-    let args =
-        App::new("json-generator")
-            .version("0.1.0")
-            .author("Boris Zhguchev <zhguchev@gmail.com>")
-            .about("generate json documents based on example including predefined functions")
-            .arg(Arg::with_name("json-file")
-                .short('f')
-                .long("json-file")
-                .takes_value(true)
-                .about("example to generate"))
-            .arg(Arg::with_name("json-body")
-                .short('b')
-                .long("json-body")
-                .takes_value(true)
-                .about("json body to generate"))
-            .arg(Arg::with_name("repeater")
-                .short('r')
-                .long("repeat")
-                .takes_value(true)
-                .about("how many values needs to generate"))
-            .arg(Arg::with_name("to-curl")
-                .long("to-curl")
-                .takes_value(true)
-                .about("send the request through curl using this param and adding json body "))
-            .arg(Arg::with_name("to-folder")
-                .long("to-folder")
-                .takes_value(true)
-                .about("save jsons as separated files"))
-            .arg(Arg::with_name("to-file")
-                .long("to-file")
-                .takes_value(true)
-                .about("save jsons to file"))
-            .arg(Arg::with_name("to-console")
-                .long("to-cmd")
-                .about("show json in console(by default if outputs array is empty)"))
-            .arg(Arg::with_name("pretty-js")
-                .long("pretty")
-                .about("formatting"))
-            .arg(Arg::with_name("print")
-                .short('p')
-                .long("print")
-                .about("print logs"))
-            .get_matches();
-
-
+    let args = get_args();
     if args.is_present("print") {
         SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap()
     }
 
     generate(json(&args), r(&args), args.is_present("pretty-js"), &mut output(&args))
+}
+
+fn get_args() -> ArgMatches {
+    App::new("json-generator")
+        .version("0.1.0")
+        .author("Boris Zhguchev <zhguchev@gmail.com>")
+        .about("generate json documents based on example including predefined functions")
+        .arg(Arg::with_name("json-file")
+            .short('f')
+            .long("json-file")
+            .takes_value(true)
+            .allow_hyphen_values(true)
+            .about("example to generate"))
+        .arg(Arg::with_name("json-body")
+            .short('b')
+            .long("json-body")
+            .takes_value(true)
+            .allow_hyphen_values(true)
+            .about("json body to generate"))
+        .arg(Arg::with_name("repeater")
+            .short('r')
+            .long("repeat")
+            .takes_value(true)
+            .about("how many values needs to generate"))
+        .arg(Arg::with_name("to-curl")
+            .long("to-curl")
+            .takes_value(true)
+            .allow_hyphen_values(true)
+            .about("send the request through curl using this param and adding json body "))
+        .arg(Arg::with_name("to-folder")
+            .long("to-folder")
+            .takes_value(true)
+            .allow_hyphen_values(true)
+            .about("save jsons as separated files"))
+        .arg(Arg::with_name("to-file")
+            .long("to-file")
+            .takes_value(true)
+            .allow_hyphen_values(true)
+            .about("save jsons to file"))
+        .arg(Arg::with_name("to-console")
+            .long("to-cmd")
+            .about("show json in console(by default if outputs array is empty)"))
+        .arg(Arg::with_name("pretty-js")
+            .long("pretty")
+            .about("formatting"))
+        .arg(Arg::with_name("print")
+            .short('p')
+            .long("print")
+            .about("print logs"))
+        .get_matches()
 }
 
 fn r(args: &ArgMatches) -> usize {
@@ -76,7 +82,7 @@ fn r(args: &ArgMatches) -> usize {
 fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
     let mut outputs: Vec<Box<dyn Sender>> = vec![];
     if let Some(str) = args.value_of("to-file") {
-        info!("output to file: {}", str);
+        info!(" output to file: {}", str);
         outputs.push(Box::new(FileSender::new(str.to_string())))
     }
     if let Some(str) = args.value_of("to-folder") {
@@ -85,9 +91,9 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
     }
     if let Some(str) = args.value_of("to-curl") {
         info!(" output to server: {}", str);
-        outputs.push(Box::new(CurlSender { cmd: str.to_string() }))
+        outputs.push(Box::new(CurlSender::new(str.to_string())))
     }
-    if  args.is_present("to-console") {
+    if args.is_present("to-console") {
         info!("output to console");
         outputs.push(Box::new(ConsoleSender {}))
     }
@@ -101,15 +107,17 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
 fn generate(json: Json, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
     for _ in 1..rep {
         for mut v in outputs.iter_mut() {
-            if pretty {
-                v.send_pretty(json.next().clone());
+            match if pretty {
+                v.send_pretty(json.next().clone())
             } else {
-                v.send(json.next().to_string());
+                v.send(json.next().to_string())
+            } {
+                Ok(res) => info!("sending json : {}", res),
+                Err(e) => error!("sending json[error] : {}", e.to_string())
             }
         }
     }
 }
-
 
 fn json(args: &ArgMatches) -> Json {
     let txt = match (args.value_of("json-body"), args.value_of("json-file")) {

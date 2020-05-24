@@ -8,7 +8,7 @@ const S: &'static str = "\r\n";
 #[cfg(not(windows))]
 const S: &'static str = "\n";
 
-
+//todo make pretty function proper
 pub struct PrettyJson {
     delegate: Json
 }
@@ -24,7 +24,7 @@ pub struct ConsoleSender{}
 impl Sender for ConsoleSender{
     fn send(&mut self, json: String) -> Result<String, String> {
         println!("{}",json);
-        Ok("".to_string())
+        Ok("item has been sent to console".to_string())
     }
 }
 
@@ -46,13 +46,13 @@ impl ToString for PrettyJson {
 
 fn smcln(str: String) -> String {
     let mut res = str;
-    res = res.replace(",", format!(",{}", S).as_str());
+    res = res.replace(",", format!(",{} ", S).as_str());
     res
 }
 
 fn crly(str: String) -> String {
     let mut res = str;
-    res = res.replace("{", format!("{{{}", S).as_str());
+    res = res.replace("{", format!("{{{} ", S).as_str());
     res = res.replace("}", format!("{}}}", S).as_str());
     res
 }
@@ -70,7 +70,6 @@ mod tests {
     use crate::sender::{PrettyJson, smcln, crly};
 
     //todo  tests will occur to fall in linux.
-
     #[test]
     fn pretty_to_string_test() {
         let js = r#"{"person":{"id":1,"name":"Eli\"za\"beth","surname":"E","age":10,"children":[3,6],"address":{"street":"Grip","house":10,"city":"Berlin"}}} "#;

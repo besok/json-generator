@@ -3,5 +3,7 @@
   "field_1": 1,
   /* uuid() */
   "field_2": "field",
-  "field_3": "field_3"
+  "field_3": {
+    "field_4": "text"
+  }
 }
