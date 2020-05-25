@@ -145,7 +145,7 @@ impl<T> GeneratorFunc for RandomFromList<T>
     }
 }
 
-struct RandomFromFile<T: FromStr + Clone + Into<Json>>
+pub struct RandomFromFile<T: FromStr + Clone + Into<Json>>
     where <T as FromStr>::Err: Debug {
     path: String,
     delim: String,
@@ -154,7 +154,7 @@ struct RandomFromFile<T: FromStr + Clone + Into<Json>>
 
 impl<T: FromStr + Clone + Into<Json>> RandomFromFile<T>
     where <T as FromStr>::Err: Debug {
-    fn new(path: &str, delim: &str) -> Result<Self, Error> {
+    pub fn new(path: &str, delim: &str) -> Result<Self, Error> {
         let values = from_string(read_file_into_string(path)?, delim);
         Ok(
             RandomFromFile {

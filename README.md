@@ -37,8 +37,8 @@
     - sequence : usize 
     - random_str: usize - len of record
     - random_int : start and stop usize  
-    -. random_str_from_file : path to the file , delimiter
-    -. random_int_from_file : path to the file , delimiter
+    - random_str_from_file : path to the file , delimiter
+    - random_int_from_file : path to the file , delimiter
     -. random_str_from_list : list of strings
     -. random_int_from_list : list of integers
     -. array : function , size
