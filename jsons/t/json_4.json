@@ -1,0 +1,19 @@
+{
+ "person": {
+ "id": 6,
+ "update_tm": "2020-05-26 16:09:20",
+ "name": "fa6JI4kmeX",
+ "surname": "Vovovka",
+ "age": 36,
+ "children_ids": [
+14,
+ 15,
+ 16
+],
+ "address": {
+ "street": "uIcgkFiVbR",
+ "house": 94,
+ "city": "Helsinki"
+}
+}
+}
