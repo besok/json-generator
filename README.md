@@ -34,14 +34,14 @@
             - const with val     
             
 - list :
-    - sequence : usize 
-    - random_str: usize - len of record
-    - random_int : start and stop usize  
-    - random_str_from_file : path to the file , delimiter
-    - random_int_from_file : path to the file , delimiter
-    -. random_str_from_list : list of strings
-    -. random_int_from_list : list of integers
-    -. array : function , size
-    - uuid 
-    - current_date_time : string with format
+    - sequence(usize) // starting point
+    - random_str(usize) // len of record
+    - random_int(usize, usize) // start and stop or delimiter can be omitted thus comma will be used
+    - random_str_from_file(str,str) //  path to the file , delimiter or delimiter can be omitted thus comma will be used 
+    - random_int_from_file(str,str) // path to the file , delimiter
+    - random_str_from_list(str..) // list of strings
+    - random_int_from_list(int..) // list of integers
+    - array(func,usize) // function , size
+    - uuid()
+    - current_date_time(str) | current_date_time()  // string with format or empty
     

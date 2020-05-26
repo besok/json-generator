@@ -1,0 +1,27 @@
+{
+  "person": {
+    /* sequence(1) */
+    "id": 1,
+    /* current_date_time() */
+    "update_tm": "a",
+    /*random_str(10)*/
+    "name": "Eli\"za\"beth",
+    /* random_str_from_list(Eva,Vova,Vora,Revva,Rovva,Rana,Roska,Vovovka) */
+    "surname": "EVa",
+    /*random_int(20,40)*/
+    "age": 10,
+    /*array(3,sequence(1))*/
+    "children_ids": [
+      3,
+      6
+    ],
+    "address": {
+      /*random_str(10)*/
+      "street": "Grip",
+      /*random_int(1,100)*/
+      "house": 10,
+      /* random_str_from_file(C:\projects\json-generator\jsons\cities.txt,\r\n)*/
+      "city": "Berlin"
+    }
+  }
+}

@@ -105,7 +105,7 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
 }
 
 fn generate(json: Json, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
-    for _ in 1..rep {
+    for _ in 0..rep {
         for mut v in outputs.iter_mut() {
             match if pretty {
                 v.send_pretty(json.next().clone())

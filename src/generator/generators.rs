@@ -23,22 +23,23 @@ impl GeneratorFunc for Null {
     }
 }
 
-pub struct Constant<T:Into<Json> + Clone> {
+pub struct Constant<T: Into<Json> + Clone> {
     pub value: T
 }
 
-impl Into<Json> for String{
+impl Into<Json> for String {
     fn into(self) -> Json {
         Json::Str(self.clone())
     }
 }
-impl Into<Json> for i64{
+
+impl Into<Json> for i64 {
     fn into(self) -> Json {
         Json::Num(self.clone())
     }
 }
 
-impl<T:Into<Json>+Clone> GeneratorFunc for Constant<T> {
+impl<T: Into<Json> + Clone> GeneratorFunc for Constant<T> {
     fn next(&mut self) -> Json {
         self.value.clone().into()
     }
@@ -122,21 +123,20 @@ impl GeneratorFunc for CurrentDateTime {
     }
 }
 
-struct RandomFromList<T:Into<Json> + Clone> {
+pub struct RandomFromList<T: Into<Json> + Clone> {
     values: Vec<T>,
     rng: ThreadRng,
 }
 
-impl<T:Into<Json> + Clone> RandomFromList<T> {
-    fn new(values: Vec<T>) -> Self {
+impl<T: Into<Json> + Clone> RandomFromList<T> {
+    pub fn new(values: Vec<T>) -> Self {
         RandomFromList { values, rng: rand::thread_rng() }
     }
 }
 
 
-
 impl<T> GeneratorFunc for RandomFromList<T>
-    where T:Into<Json> + Clone{
+    where T: Into<Json> + Clone {
     fn next(&mut self) -> Json {
         match self.values.choose(&mut self.rng) {
             None => Json::Null,
@@ -167,7 +167,7 @@ impl<T: FromStr + Clone + Into<Json>> RandomFromFile<T>
 }
 
 impl<T: Clone + FromStr + Into<Json>> GeneratorFunc for RandomFromFile<T>
-    where <T as FromStr>::Err: Debug{
+    where <T as FromStr>::Err: Debug {
     fn next(&mut self) -> Json {
         self.g.next()
     }
@@ -175,7 +175,15 @@ impl<T: Clone + FromStr + Into<Json>> GeneratorFunc for RandomFromFile<T>
 
 fn from_string<T: FromStr>(v: String, d: &str) -> Vec<T>
     where <T as FromStr>::Err: Debug {
-    v.split(d)
+    let mut del = match d.trim() {
+        r#"\r\n"# =>"\r\n",
+        r#"\n"# =>"\n",
+        r#"\r"# =>"\r",
+        r#"\n\r"# =>"\n\r",
+        _ => d
+    };
+
+    v.split(del)
         .map(FromStr::from_str)
         .filter(Result::is_ok)
         .map(Result::unwrap)
@@ -189,12 +197,18 @@ pub fn read_file_into_string(path: &str) -> Result<String, Error> {
 }
 
 
-struct Array{
-    len:usize,
-    g : Box<dyn GeneratorFunc>,
+pub struct RandomArray {
+    len: usize,
+    g: Generator,
 }
 
-impl GeneratorFunc for Array{
+impl RandomArray {
+    pub fn new(len: usize, g: Generator) -> Self {
+        RandomArray { len, g }
+    }
+}
+
+impl GeneratorFunc for RandomArray {
     fn next(&mut self) -> Json {
         Json::Array(
             (0..self.len).map(|_| self.g.next()).collect()
@@ -206,9 +220,28 @@ impl GeneratorFunc for Array{
 #[cfg(test)]
 mod tests {
     use crate::parser::Json;
-    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, from_string, RandomFromFile};
-    use crate::generator::GeneratorFunc;
+    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, from_string, RandomFromFile, RandomArray};
+    use crate::generator::{GeneratorFunc, Generator};
     use std::io::Error;
+
+    #[test]
+    fn array_test() {
+        let gen = Generator::new(RandomInt::new(1, 100));
+        let g = Generator::new(RandomArray::new(3, gen));
+
+        if let Json::Array(v) = g.next() {
+            assert_eq!(v.len(), 3);
+            for e in v.into_iter() {
+                if let Json::Num(el) = e {
+                    assert_eq!(el > 0 && el < 100, true)
+                } else {
+                    panic!("err")
+                }
+            }
+        } else {
+            panic!("err")
+        }
+    }
 
     #[test]
     fn random_string_test() {
@@ -291,16 +324,15 @@ mod tests {
 
     #[test]
     fn from_file_test() {
-        match RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ","){
+        match RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ",") {
             Ok(ref mut g) => {
-                if let Json::Num(el) = g.next(){
+                if let Json::Num(el) = g.next() {
                     assert!(el > 0 && el < 7);
-                }else{
+                } else {
                     panic!("num")
                 }
-            },
+            }
             Err(_) => panic!("error, should be ok"),
         };
     }
-
 }
