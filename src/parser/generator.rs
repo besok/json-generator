@@ -140,32 +140,34 @@ fn random_from_list<'a, T: 'static + Into<Json> + Clone, F: Fn(&str) -> T>(i: &'
 fn random_array(i: &str) -> IResult<&str, Generator> {
     preceded(tag("array("),
              terminated(
-                 map_res(separated_pair(preceded(sp,
-                                                 |s| {
-                                                     map_res(take_while1(char::is_numeric),
-                                                             |s: &str| {
-                                                                 let res: Result<&str, GenError> = Ok(s);
-                                                                 res
-                                                             })(s)
-                                                 }),
-                                        cut(preceded(sp, char(','))),
-                                        |s| {
-                                            map_res(take_while1(|c| c != ')'),
-                                                    |s: &str| {
-                                                        let res: Result<&str, GenError> = Ok(s);
-                                                        res
-                                                    })(s)
-                                        }),
-                         |v: (&str, &str)| {
-                             match v {
-                                 (s, f) =>
-                                     match generator(format!("{})", f).as_str()) {
-                                         Ok((r, g)) =>
-                                             new(RandomArray::new(s.parse().unwrap(), g)),
-                                         Result::Err(err) => Err(GenError::new())
-                                     }
-                             }
+                 map_res(
+                     separated_pair(
+                         preceded(sp,
+                                  |s| {
+                                      map_res(take_while1(char::is_numeric),
+                                              |s: &str| {
+                                                  let res: Result<&str, GenError> = Ok(s);
+                                                  res
+                                              })(s)
+                                  }),
+                         cut(preceded(sp, char(','))),
+                         |s| {
+                             map_res(take_while1(|c| c != ')'),
+                                     |s: &str| {
+                                         let res: Result<&str, GenError> = Ok(s);
+                                         res
+                                     })(s)
                          }),
+                     |v: (&str, &str)| {
+                         match v {
+                             (s, f) =>
+                                 match generator(format!("{})", f).as_str()) {
+                                     Ok((r, g)) =>
+                                         new(RandomArray::new(s.parse().unwrap(), g)),
+                                     Result::Err(err) => Err(GenError::new())
+                                 }
+                         }
+                     }),
                  preceded(sp, char(')')),
              ),
     )(i)

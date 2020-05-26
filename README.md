@@ -1,57 +1,39 @@
-### Json generator
+## Json generator
+The console utility to generate JSON items according to the provided example composing JSON body 
+and a set of functions defining the logic to generate new items. 
+The utility allows delivering the generated JSON to different sources such as HTTP server, folder or file
 
- - [json standart](https://www.json.org/json-en.html)
- 
-### modules
-- input : (file.json / text with json / http request?) params with output format and number and 
-- output : text with json / file.json / folder / http 
-- validator : json correctness
-- generator :  
-    - types (primitive / objects)
-    - works with schema  
-    
-#### generators
-- examples  
-    - correspondingly, the list of functions with conditions like:
-        - string
-            - randomFromList with list
-            - randomFromFile with path
-            - random with len
-            - const with val
-            - currentDate with format
-            - currentDateTime with format
-            - uuid
-        - int 
-            - sequence with start pos
-            - randomFromList with list
-            - randomFromFile with path
-            - const with val
-            - random with start and end pos
-        - array
-            - array with func and element count 
-        - boolean
-            - random
-            - const with val     
-            
-- list :
-    - sequence(usize) // starting point
-    - random_str(usize) // len of record
-    - random_int(usize, usize) // start and stop or delimiter can be omitted thus comma will be used
-    - random_str_from_file(str,str) //  path to the file , delimiter or delimiter can be omitted thus comma will be used 
-    - random_int_from_file(str,str) // path to the file , delimiter
-    - random_str_from_list(str..) // list of strings
-    - random_int_from_list(int..) // list of integers
-    - array(func,usize) // function , size
-    - uuid()
-    - current_date_time(str) | current_date_time()  // string with format or empty
+### Generators
+The function can be added to json file above the proper field with /* */ distinction as foolows:
+```json
+{
+/* generator(args)*/
+"field" : "value"
+}
+```
 
-### Command line
+#### List of generators:
+| Generator | Arguments | Description | Example |
+|----------------------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| sequence | starting point | the sequentially-increase row of numbers (1,2,3,4 ...) | sequence(10)  |
+| random_str | size of row | the row composed of random letters and numbers, predefined length | random_str(10) |
+| random_int | low bound and high bound | the random number lying in predefined bounds | random_int(1,100) |
+| random_str_from_file | path to file, delimiter(optional) | the list of string pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used | random_str_from_file(\home\user\json) random_str_from_file(\home\user\json,;) random_str_from_file(\home\user\json,\n) |
+| random_int_from_file | path to file, delimiter(optional)  | list of numbers pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used  | random_int_from_file(c:\\user\json)  |
+| random_str_from_list | list of values | the list of string | random_str_from_list(a,b,c,d) |
+| random_int_from_list | list of values | list of numbers | random_int_from_list(1,2,3,4,5) |
+| uuid |  | generated uuid  | uuid() |
+| current_date_time | format | the current date and time. By default can be ommited  and '%Y-%m-%d %H:%M:%S' will be used | currnet_date_time(%Y-%m-%d) |
+| array | number of elements, generator for elements | the generator to get the array filled. | array(10,random_int(1,10)) |
+
+
+### Command line example
 
 ```
 json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--to-curl '-X POST ip'
 ```    
 
-#### Arguments
+#### Command line Arguments
 | Short(-) | Long(--)  | Description                                                                                                 | Example                                                               |
 |----------|-----------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | b        | json-body | the text reprensting the json body                                                                          | --json-body \| -b '{"k":"v"}'                                         |
@@ -66,4 +48,34 @@ json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--t
 | -h       | --help    | infroamtion about commands                                                                                  | -h \| --help                                                          |
 | -V       | --version | version                                                                                                     | -V \| --version                                                       |
  
- 
+#### Json example
+
+```json
+{
+  "person": {
+    /* sequence(1) */
+    "id": 1,
+    /* current_date_time() */
+    "update_tm": "",
+    /*random_str(10)*/
+    "name": "Eli\"za\"beth",
+    /* random_str_from_list(a,b,c,d) */
+    "surname": "EVa",
+    /*random_int(20,40)*/
+    "age": 10,
+    /*array(3,sequence(1))*/
+    "children_ids": [
+      3,
+      6
+    ],
+    "address": {
+      /*random_str(10)*/
+      "street": "Grip",
+      /*random_int(1,100)*/
+      "house": 10,
+      /* random_str_from_file(C:\projects\json-generator\jsons\cities.txt,\r\n)*/
+      "city": "Berlin"
+    }
+  }
+}
+```

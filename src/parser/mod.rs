@@ -59,6 +59,7 @@ impl Field {
         Field { name, value: g.next(), g: Some(g) }
     }
     fn new_with_gen(name: String, value: Json, g: Generator) -> Self {
+        info!("create a field:{}",name);
         Field { name, value, g: Some(g) }
     }
     fn get_next(&self) -> Option<Json> {

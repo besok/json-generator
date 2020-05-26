@@ -1,3 +1,6 @@
+//! # json generator
+//!
+//!
 use clap::{Arg, App, ArgMatches};
 use crate::generator::generators::read_file_into_string;
 use crate::parser::{Json, parse_json, ParserError};
@@ -84,23 +87,23 @@ fn r(args: &ArgMatches) -> usize {
 fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
     let mut outputs: Vec<Box<dyn Sender>> = vec![];
     if let Some(str) = args.value_of("to-file") {
-        info!(" output to file: {}", str);
+        info!("set the output to file: {}", str);
         outputs.push(Box::new(FileSender::new(str.to_string())))
     }
     if let Some(str) = args.value_of("to-folder") {
-        info!("output to folder: {}", str);
+        info!("set the output to folder: {}", str);
         outputs.push(Box::new(FolderSender::new(str.to_string())))
     }
     if let Some(str) = args.value_of("to-curl") {
-        info!(" output to server: {}", str);
+        info!("set the output to server: {}", str);
         outputs.push(Box::new(CurlSender::new(str.to_string())))
     }
     if args.is_present("to-console") {
-        info!("output to console");
+        info!("set the output to console");
         outputs.push(Box::new(ConsoleSender {}))
     }
     if outputs.is_empty() {
-        info!("output to console");
+        info!("set the output to console");
         outputs.push(Box::new(ConsoleSender {}))
     }
     outputs
@@ -122,6 +125,7 @@ fn generate(json: Json, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Send
 }
 
 fn json(args: &ArgMatches) -> Json {
+    info!("parsing json:");
     let txt = match (args.value_of("json-body"), args.value_of("json-file")) {
         (Some(body), _) => String::from(body),
         (None, Some(file)) => read_file_into_string(file)
