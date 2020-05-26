@@ -5,7 +5,7 @@ The utility allows delivering the generated JSON to different sources such as HT
 
 ### Generators
 The function can be added to json file above the proper field with /* */ distinction as foolows:
-```json
+```
 {
 /* generator(args)*/
 "field" : "value"
@@ -34,7 +34,7 @@ json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--t
 ```    
 
 #### Command line Arguments
-| Short(-) | Long(--)  | Description                                                                                                 | Example                                                               |
+| Short | Long  | Description                                                                                                 | Example                                                               |
 |----------|-----------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | b        | json-body | the text reprensting the json body                                                                          | --json-body \| -b '{"k":"v"}'                                         |
 | f        | json-file | the path to file including the json                                                                         | --json-file \| -f c:\\folder\json.json                                |
