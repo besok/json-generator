@@ -44,4 +44,26 @@
     - array(func,usize) // function , size
     - uuid()
     - current_date_time(str) | current_date_time()  // string with format or empty
-    
+
+### Command line
+
+```
+json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--to-curl '-X POST ip'
+```    
+
+#### Arguments
+| Short(-) | Long(--)  | Description                                                                                                 | Example                                                               |
+|----------|-----------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| b        | json-body | the text reprensting the json body                                                                          | --json-body \| -b '{"k":"v"}'                                         |
+| f        | json-file | the path to file including the json                                                                         | --json-file \| -f c:\\folder\json.json                                |
+| r        | repeat    | the number of repetetions of generating                                                                     | --repeat \| -r 10                                                     |
+|          | pretty    | inserts formatting symbols in proper places                                                                 | --pretty                                                              |
+|          | print     | prints logs                                                                                                 | --print                                                               |
+|          | to-cmd    | show json in console(by default if outputs array is empty)                                                  | --to-cmd                                                              |
+|          | to-file   | append generated jsons to file. If the file does not exist.  it creates a new one. The folder should exist. | --to-file c:\\folder\jsons.json                                       |
+|          | to-folder | creates new files and place it to the selected folder.  It creates folder if it not exists.                 | --to-file c:\\folder                                                  |
+|          | to-curl   | sends jsons to the server using curl for that. In fact,  the -d will be added.                              | --to-curl '-H "Content-Type:application/json" -X POST 127.0.0.1:7878' |
+| -h       | --help    | infroamtion about commands                                                                                  | -h \| --help                                                          |
+| -V       | --version | version                                                                                                     | -V \| --version                                                       |
+ 
+ 
