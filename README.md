@@ -50,7 +50,7 @@ json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--t
  
 #### Json example
 
-```json
+```
 {
   "person": {
     /* sequence(1) */
