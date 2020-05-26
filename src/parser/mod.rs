@@ -1,3 +1,6 @@
+//! ### Parsers
+//! the module which parses the incoming json body to Json structure
+//! and generators to work with.
 use std::fmt::{Debug, Formatter, Display};
 use crate::generator::Generator;
 use crate::parser::json::value;
@@ -8,6 +11,7 @@ use nom::error::ErrorKind;
 pub mod json;
 pub mod generator;
 
+/// The base structure to work with json
 #[derive(Clone, Debug, PartialEq)]
 pub enum Json {
     Num(i64),
@@ -116,7 +120,20 @@ impl Display for ParserError{
         write!(f,"{}",self.cause)
     }
 }
-
+/// The interface function to parse files or texts:
+/// ### Example:
+/// ```rust
+///  match parse_json(txt.as_str()) {
+//        Ok(json) => {
+//            info!("parsed json:{:?}", json);
+//            json
+//        }
+//        Err(e) => panic!("error while parsing json : {:?}", e),
+//    }
+/// ```
+///
+///
+///
 pub fn parse_json(json: &str) -> Result<Json,ParserError>{
     match value(json){
         Ok((_,js_res)) => Ok(js_res),

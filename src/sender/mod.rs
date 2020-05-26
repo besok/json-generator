@@ -1,3 +1,5 @@
+//! The module which is responsible to send generated jsons to different sources
+//! It provides the trait Sender to work with
 use crate::parser::Json;
 
 pub mod http;
@@ -8,17 +10,21 @@ const S: &'static str = "\r\n";
 #[cfg(not(windows))]
 const S: &'static str = "\n";
 
-//todo make pretty function proper
+/// The struct to transform  a raw json(which is essentially a string)
+/// to the string including some elements of formatting.
 pub struct PrettyJson {
+//todo make pretty function proper
     delegate: Json
 }
 
+/// The basic trait using to send the json to a specific location related to the implementation
 pub trait Sender {
     fn send(&mut self, json: String) -> Result<String, String>;
     fn send_pretty(&mut self, delegate: Json) -> Result<String, String> {
         self.send( PrettyJson { delegate }.to_string())
     }
 }
+
 
 pub struct ConsoleSender{}
 impl Sender for ConsoleSender{

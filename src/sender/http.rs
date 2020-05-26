@@ -4,7 +4,8 @@ use crate::sender::{Sender, PrettyJson, S};
 use crate::parser::Json;
 use std::io::Error;
 
-
+/// the struct which implements the Sender trait and allows
+/// to send a json to the server, using curl utility
 pub struct CurlSender {
     pub cmd: String,
 }
@@ -38,6 +39,12 @@ impl Sender for CurlSender {
     }
 }
 
+/// the function using the curl from os
+/// ```rust
+///  let res = curl(
+//                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
+//                r#"{"key1":"value1", "key2":"value2"}"#).expect("no error");
+/// ```
 // todo move to nonblocking output
 pub fn curl(cmd: &str, json: &str) -> io::Result<Output> {
     let mut args: Vec<&str> = cmd.split_whitespace().collect();

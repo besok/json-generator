@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 use crate::sender::Sender;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-
+/// the struct which implements the Sender trait and allows
+/// to save a generated json to folder
+/// It includes the internal state to generate the index of the files
 pub struct FolderSender {
     path: String,
     idx: usize,
@@ -28,7 +30,6 @@ impl FolderSender {
                     }
                 } else { panic!(format!("the error occurs with output file: {}", e.to_string())) }
         }
-
         FolderSender { path, idx: 0 }
     }
 }
@@ -65,6 +66,8 @@ fn current_ts() -> u128 {
         .as_millis()
 }
 
+/// the struct which implements the Sender trait and allows
+/// to append a generated json to file
 pub struct FileSender {
     path: String
 }

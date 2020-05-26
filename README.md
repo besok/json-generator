@@ -48,6 +48,7 @@ json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--t
 | -h       | --help    | infroamtion about commands                                                                                  | -h \| --help                                                          |
 | -V       | --version | version                                                                                                     | -V \| --version                                                       |
  
+**note**: for using --to-curl  parameter need to ensure the curl utility is installed.
 #### Json example
 
 ```

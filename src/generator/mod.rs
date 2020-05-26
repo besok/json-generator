@@ -1,3 +1,5 @@
+//! ### Generators
+//! The functions which are responsible to generate new json values
 pub mod generators;
 
 use std::fmt::{Debug, Formatter, Error};
@@ -15,6 +17,7 @@ use once_cell::sync::Lazy;
 use std::rc::Rc;
 use std::any::{type_name, Any};
 
+/// The trait represents the function to generate jsons
 pub trait GeneratorFunc {
     fn next(&mut self) -> Json;
 }
@@ -36,6 +39,7 @@ impl Debug for dyn GeneratorFunc {
     }
 }
 
+/// the struct represents the generator which is essentially a wrapper to generalize GeneratorFunc
 #[derive(Debug)]
 pub struct Generator {
     delegate: Rc<RefCell<dyn GeneratorFunc>>

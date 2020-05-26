@@ -1,6 +1,11 @@
 //! # json generator
-//!
-//!
+//! The console utility to generate JSON items according to the provided example composing JSON body
+//! and a set of functions defining the logic to generate new items.
+//! The utility allows delivering the generated JSON to different sources such as HTTP server, folder or file
+//! ## Example
+//! ```commandline
+//! json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--to-curl '-X POST ip'
+//! ```
 use clap::{Arg, App, ArgMatches};
 use crate::generator::generators::read_file_into_string;
 use crate::parser::{Json, parse_json, ParserError};
