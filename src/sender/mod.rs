@@ -1,6 +1,6 @@
 //! The module which is responsible to send generated jsons to different sources
 //! It provides the trait Sender to work with
-use crate::parser::Json;
+use crate::parser::{Json, Field};
 
 pub mod http;
 pub mod file;
@@ -10,96 +10,143 @@ const S: &'static str = "\r\n";
 #[cfg(not(windows))]
 const S: &'static str = "\n";
 
-/// The struct to transform  a raw json(which is essentially a string)
-/// to the string including some elements of formatting.
-pub struct PrettyJson {
-//todo make pretty function proper
-    delegate: Json
-}
-
 /// The basic trait using to send the json to a specific location related to the implementation
 pub trait Sender {
     fn send(&mut self, json: String) -> Result<String, String>;
     fn send_pretty(&mut self, delegate: Json) -> Result<String, String> {
-        self.send( PrettyJson { delegate }.to_string())
+        self.send(PrettyJson { delegate }.to_string())
     }
 }
 
+trait PrettyString {
+    fn to_pretty_string(&self, level: i16) -> String;
+}
 
-pub struct ConsoleSender{}
-impl Sender for ConsoleSender{
+impl PrettyString for Json {
+    fn to_pretty_string(&self, level: i16) -> String {
+        match self {
+            Json::Object(fields) => format!("{}", fields.to_pretty_string(level + 1)),
+            Json::Array(values) => format!("{}", values.to_pretty_string(level + 1)),
+            el @ _ => el.to_string(),
+        }
+    }
+}
+
+impl PrettyString for Vec<Json> {
+    fn to_pretty_string(&self, level: i16) -> String {
+        format!("[{}{}{}]",
+                self.iter()
+                    .map(|j| j.to_pretty_string(level + 1))
+                    .fold(String::new(),
+                          |a, b|
+                              match (a.as_str(), b.as_str()) {
+                                  ("", b) => format!("{}{}{}", S, spaces(level), b),
+                                  (a, "") => format!("{}", a),
+                                  (a, b) => format!("{},{}{}{}", a, S, spaces(level), b),
+                              }), S, spaces(level - 2)
+        )
+    }
+}
+
+impl PrettyString for Vec<Field> {
+    fn to_pretty_string(&self, level: i16) -> String {
+        format!("{{{}{}{}}}",
+                self.iter()
+                    .map(|j| j.to_pretty_string(level + 1))
+                    .fold(String::new(),
+                          |a, b|
+                              match (a.as_str(), b.as_str()) {
+                                  ("", b) => format!("{}", b),
+                                  (a, "") => format!("{}", a),
+                                  (a, b) => format!("{},{}", a, b),
+                              }), S, spaces(level - 2)
+        )
+    }
+}
+
+impl PrettyString for Field {
+    fn to_pretty_string(&self, level: i16) -> String {
+        format!(r#"{}{}"{}": {}"#,
+                S, spaces(level), self.name,
+                self.value.to_pretty_string(level + 1))
+    }
+}
+
+fn spaces(l: i16) -> String {
+    let mut s = String::new();
+    if l < 0 {
+        return s
+    }
+    for _ in 0..l {
+        s.push(' ');
+    }
+    s
+}
+
+/// The struct to transform  a raw json(which is essentially a string)
+/// to the string including some elements of formatting.
+pub struct PrettyJson {
+    //todo make pretty function proper
+    delegate: Json
+}
+
+pub struct ConsoleSender {}
+
+impl Sender for ConsoleSender {
     fn send(&mut self, json: String) -> Result<String, String> {
-        println!("{}",json);
+        println!("{}", json);
         Ok("item has been sent to console".to_string())
     }
 }
 
 impl PrettyJson {
-    pub fn new(delegate: Json) -> PrettyJson {
+    pub fn new(delegate: Json) -> Self {
         PrettyJson { delegate }
     }
 }
 
 impl ToString for PrettyJson {
     fn to_string(&self) -> String {
-        match &self.delegate {
-            obj @ Json::Object(_) =>
-                sqr(crly(smcln(obj.to_string()))),
-            prm @ _ => prm.to_string(),
-        }
+        self.delegate.to_pretty_string(0)
     }
 }
 
-fn smcln(str: String) -> String {
-    let mut res = str;
-    res = res.replace(",", format!(",{} ", S).as_str());
-    res
-}
-
-fn crly(str: String) -> String {
-    let mut res = str;
-    res = res.replace("{", format!("{{{} ", S).as_str());
-    res = res.replace("}", format!("{}}}", S).as_str());
-    res
-}
-
-fn sqr(str: String) -> String {
-    let mut res = str;
-    res = res.replace("[", format!("[{}", S).as_str());
-    res = res.replace("]", format!("{}]", S).as_str());
-    res
-}
 
 #[cfg(test)]
 mod tests {
     use crate::parser::{Json, Field, parse_json, ParserError};
-    use crate::sender::{PrettyJson, smcln, crly};
+    use crate::sender::PrettyJson;
 
     //todo  tests will occur to fall in linux.
     #[test]
     fn pretty_to_string_test() {
-        let js = r#"{"person":{"id":1,"name":"Eli\"za\"beth","surname":"E","age":10,"children":[3,6],"address":{"street":"Grip","house":10,"city":"Berlin"}}} "#;
+        let js = r#"{"person":{"id":{"f":100},"name":"Eli\"za\"beth","surname":"E","age":10,"children":[3,6],"address":{"street":"Grip","house":10,"city":"Berlin"}}} "#;
         match parse_json(js) {
             Ok(json) => {
                 let pretty_js = PrettyJson::new(json).to_string();
-                assert_eq!("{\r\n\"person\":{\r\n\"id\":1,\r\n\"name\":\"Eli\\\"za\\\"beth\",\r\n\"surname\":\"E\",\r\n\"age\":10,\r\n\"children\":[\r\n3,\r\n6\r\n],\r\n\"address\":{\r\n\"street\":\"Grip\",\r\n\"house\":10,\r\n\"city\":\"Berlin\"\r\n}\r\n}\r\n}",
-                           pretty_js)
+                let pretty_js = pretty_js.replace("\r\n","\n");
+                assert_eq!(pretty_js,
+                r#"{
+  "person": {
+     "id": {
+        "f": 100
+     },
+     "name": "Eli\"za\"beth",
+     "surname": "E",
+     "age": 10,
+     "children": [
+       3,
+       6
+     ],
+     "address": {
+        "street": "Grip",
+        "house": 10,
+        "city": "Berlin"
+     }
+  }
+}"#);
             }
             Err(e) => panic!("{}", e),
         };
-    }
-
-    #[test]
-    fn add_nl_after_semicolon_test() {
-        let str = "a,b,c".to_string();
-        let res_str = smcln(str);
-        assert_eq!(res_str, "a,\r\nb,\r\nc");
-    }
-
-    #[test]
-    fn add_nl_after_bracket_test() {
-        let str = "{a{b},c}".to_string();
-        let res_str = crly(str);
-        assert_eq!(res_str, "{\r\na{\r\nb\r\n}\r\n,c\r\n}\r\n");
     }
 }

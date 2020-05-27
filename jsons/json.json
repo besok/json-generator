@@ -1,7 +1,9 @@
 {
   "person": {
     /* sequence(1) */
-    "id": 1,
+    "id": {
+      "f": 100
+    },
     /* current_date_time() */
     "update_tm": "a",
     /*random_str(10)*/

@@ -37,8 +37,8 @@ impl Json {
 
 #[derive(Clone)]
 pub struct Field {
-    name: String,
-    value: Json,
+    pub name: String,
+    pub value: Json,
     g: Option<Generator>,
 }
 
