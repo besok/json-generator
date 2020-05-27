@@ -86,7 +86,6 @@ fn spaces(l: i16) -> String {
 /// The struct to transform  a raw json(which is essentially a string)
 /// to the string including some elements of formatting.
 pub struct PrettyJson {
-    //todo make pretty function proper
     delegate: Json
 }
 

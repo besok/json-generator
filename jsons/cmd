@@ -2,4 +2,4 @@ curl :
 -H "Content-Type:application/json" -X POST 127.0.0.1:7878 -d "{"key1":"value1", "key2":"value2"}"
 
 general:
-json-generator.exe -f C:\projects\json-generator\jsons\json.json -r 10  --pretty --print --to-folder C:\projects\json-generator\jsons\t --to-curl '-H "Content-Type:application/json" -X POST 127.0.0.1:7878'
+json-generator.exe -f C:\projects\json-generator\jsons\json.json -r 10  --pretty --print --to-folder C:\projects\json-generator\jsons\t --to-curl "-H Content-Type:application/json -X POST 127.0.0.1:7878"
