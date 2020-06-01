@@ -116,10 +116,10 @@ mod tests {
     use crate::parser::{Json, Field, parse_json, ParserError};
     use crate::sender::PrettyJson;
 
-    //todo  tests will occur to fall in linux.
     #[test]
     fn pretty_to_string_test() {
-        let js = r#"{"person":{"id":{"f":100},"name":"Eli\"za\"beth","surname":"E","age":10,"children":[3,6],"address":{"street":"Grip","house":10,"city":"Berlin"}}} "#;
+        let js =
+            r#"{"person":{"id":{"f":100},"name":"Eli\"za\"beth","surname":"E","age":10,"children":[3,6],"address":{"street":"Grip","house":10,"city":"Berlin"}}} "#;
         match parse_json(js) {
             Ok(json) => {
                 let pretty_js = PrettyJson::new(json).to_string();

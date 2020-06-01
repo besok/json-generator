@@ -18,10 +18,13 @@ extern crate log;
 extern crate simplelog;
 
 use simplelog::*;
+#[macro_use]
+mod tools;
 
 mod parser;
 mod generator;
 mod sender;
+
 
 fn main() {
     let args = get_args();

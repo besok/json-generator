@@ -139,36 +139,34 @@ fn random_from_list<'a, T: 'static + Into<Json> + Clone, F: Fn(&str) -> T>(i: &'
 
 fn random_array(i: &str) -> IResult<&str, Generator> {
     preceded(tag("array("),
-             terminated(
-                 map_res(
-                     separated_pair(
-                         preceded(sp,
-                                  |s| {
-                                      map_res(take_while1(char::is_numeric),
-                                              |s: &str| {
-                                                  let res: Result<&str, GenError> = Ok(s);
-                                                  res
-                                              })(s)
-                                  }),
-                         cut(preceded(sp, char(','))),
-                         |s| {
-                             map_res(take_while1(|c| c != ')'),
-                                     |s: &str| {
-                                         let res: Result<&str, GenError> = Ok(s);
-                                         res
-                                     })(s)
-                         }),
-                     |v: (&str, &str)| {
-                         match v {
-                             (s, f) =>
-                                 match generator(format!("{})", f).as_str()) {
-                                     Ok((r, g)) =>
-                                         new(RandomArray::new(s.parse().unwrap(), g)),
-                                     Result::Err(err) => Err(GenError::new())
-                                 }
-                         }
-                     }),
-                 preceded(sp, char(')')),
+             terminated(map_res(separated_pair(
+                 preceded(sp,
+                          |s| {
+                              map_res(take_while1(char::is_numeric),
+                                      |s: &str| {
+                                          let res: Result<&str, GenError> = Ok(s);
+                                          res
+                                      })(s)
+                          }),
+                 cut(preceded(sp, char(','))),
+                 |s| {
+                     map_res(take_while1(|c| c != ')'),
+                             |s: &str| {
+                                 let res: Result<&str, GenError> = Ok(s);
+                                 res
+                             })(s)
+                 }),
+                                |v: (&str, &str)| {
+                                    match v {
+                                        (s, f) =>
+                                            match generator(format!("{})", f).as_str()) {
+                                                Ok((r, g)) =>
+                                                    new(RandomArray::new(s.parse().unwrap(), g)),
+                                                Result::Err(err) => Err(GenError::new())
+                                            }
+                                    }
+                                }),
+                        preceded(sp, char(')')),
              ),
     )(i)
 }
@@ -262,7 +260,9 @@ impl Display for GenError {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{sequence, uuid, generator, current_dt, random_string, random_int, random_str_from_file, random_int_from_file, random_str_from_list, random_int_from_list, random_array};
+    use crate::parser::generator::{sequence, uuid, generator, current_dt, random_string, random_int,
+                                   random_str_from_file, random_int_from_file, random_str_from_list,
+                                   random_int_from_list, random_array};
     use crate::parser::{Json, Field};
     use nom::error::ErrorKind;
     use crate::generator::Generator;
@@ -270,34 +270,12 @@ mod tests {
 
     #[test]
     fn random_int_array_test() {
-        match random_array("array(3,random_int_from_list(1,2,3,4))") {
-            Ok((_, el)) => {
-                if let Json::Array(v) = el.next() {
-                    match v[..] {
-                        [Json::Num(e1), Json::Num(e2), Json::Num(e3)] => assert_eq!(
-                            e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true),
-                        _ => panic!("!")
-                    }
-                } else {
-                    panic!("should not be")
-                }
-            }
-            Err(e) => panic!("{}", e)
-        }
-        match random_array("array(3,random_int_from_list(1,2,3,4 ) )") {
-            Ok((_, el)) => {
-                if let Json::Array(v) = el.next() {
-                    match v[..] {
-                        [Json::Num(e1), Json::Num(e2), Json::Num(e3)] => assert_eq!(
-                            e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true),
-                        _ => panic!("!")
-                    }
-                } else {
-                    panic!("should not be")
-                }
-            }
-            Err(e) => panic!("{}", e)
-        }
+        if_let!(
+        random_array("array(3,random_int_from_list(1,2,3,4))") =>  Ok((_, el))
+            => if_let!(el.next() => Json::Array(v)
+                => if_let!(v[..] => [Json::Num(e1), Json::Num(e2), Json::Num(e3)]
+                    => assert_eq!(e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true)))
+                    );
     }
 
 
@@ -312,159 +290,93 @@ mod tests {
 
     #[test]
     fn uuid_test() {
-        match uuid("uuid()") {
-            Ok((_, g)) =>
-                if let Json::Str(el) = g.next() {
-                    assert_eq!(el.len(), 36)
-                } else {
-                    panic!("test failed")
-                },
-            Err(e) => panic!("{}", e)
-        }
+            if_let!(uuid("uuid()") => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el) => assert_eq!(el.len(), 36)));
     }
 
     #[test]
     fn random_string_test() {
-        if let Ok((_, el)) = random_string("random_str(10)") {
-            if let Json::Str(el) = el.next() {
-                assert_eq!(el.len(), 10)
-            } else {
-                panic!("test failed")
-            }
-        } else {
-            panic!("test failed")
-        }
+        if_let!(random_string("random_str(10)") => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el) => assert_eq!(el.len(), 10)));
+
     }
 
     #[test]
     fn random_int_test() {
-        if let Ok((_, el)) = random_int("random_int(10,20)") {
-            if let Json::Num(el) = el.next() {
-                assert_eq!(el > 9 && el < 20, true)
-            } else {
-                panic!("test failed")
-            }
-        } else {
-            panic!("test failed")
-        }
+        if_let!(random_int("random_int(10,20)")=> Ok((_, g))
+                => if_let!(g.next() => Json::Num(el) => assert_eq!(el > 9 && el < 20, true)));
+
+
     }
 
     #[test]
     fn random_str_from_list_test() {
-        match random_str_from_list(r#"random_str_from_list(a,b,c,d)"#) {
-            Ok((_, el)) =>
-                if let Json::Str(el) = el.next() {
-                    assert_eq!("abcd".contains(el.as_str()), true)
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
+        if_let!(random_str_from_list(r#"random_str_from_list(a,b,c,d)"#) => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!("abcd".contains(el.as_str()), true)));
     }
 
     #[test]
     fn random_int_from_list_test() {
-        match random_int_from_list(r#"random_int_from_list(1,2,3)"#) {
-            Ok((_, el)) =>
-                if let Json::Num(el) = el.next() {
-                    assert_eq!(el > 0 && el < 4, true)
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
+        if_let!(random_int_from_list(r#"random_int_from_list(1,2,3)"#) => Ok((_, g))
+                => if_let!(g.next() => Json::Num(el)
+                    => assert_eq!(el > 0 && el < 4, true)));
     }
 
     #[test]
     fn random_str_from_file_nl_test() {
-        match random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\cities.txt, \r\n)"#) {
-            Ok((_, el)) =>
-                if let Json::Str(el) = el.next() {
-                    assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
-                                   .contains(el.as_str()), true)
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
+        if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\cities.txt, \r\n)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
+                                   .contains(el.as_str()), true)));
     }
 
+    #[test]
     fn random_str_from_file_test() {
-        match random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt,;)"#) {
-            Ok((_, el)) =>
-                if let Json::Str(el) = el.next() {
-                    assert_eq!(el, "1,2,3,4,5,6".to_string())
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
 
-        match random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt)"#) {
-            Ok((_, el)) =>
-                if let Json::Str(el) = el.next() {
-                    assert_eq!("1,2,3,4,5,6".contains(el.as_str()), true)
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
+        if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt,;)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!(el, "1,2,3,4,5,6".to_string())));
+
+        if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!("1,2,3,4,5,6".contains(el.as_str()), true)));
     }
 
     #[test]
     fn random_int_from_file_test() {
-        match random_int_from_file(r#"random_int_from_file(C:\projects\json-generator\jsons\list.txt)"#) {
-            Ok((_, el)) =>
-                if let Json::Num(el) = el.next() {
-                    assert_eq!(el > 0 && el < 7, true)
-                } else {
-                    panic!("test failed")
-                },
-            Err(err) => panic!("{:?}", err)
-        }
+        if_let!(random_int_from_file(r#"random_int_from_file(C:\projects\json-generator\jsons\list.txt)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Num(el)
+                    => assert_eq!(el > 0 && el < 7, true)));
     }
 
     #[test]
     fn current_dt_test() {
-        match current_dt("current_date_time()") {
-            Ok((_, el)) =>
-                if let Json::Str(s) = el.next() {
-                    assert_eq!(19, s.len())
-                } else {
-                    panic!("")
-                },
-            Err(e) => panic!("{:?}", e),
-        }
-        match current_dt("current_date_time(%Y-%m-%d)") {
-            Ok((_, el)) =>
-                if let Json::Str(s) = el.next() {
-                    assert_eq!(10, s.len())
-                } else {
-                    panic!("")
-                },
-            Err(e) => panic!("{}", e),
-        }
+        if_let!(current_dt("current_date_time()")
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!(19, el.len())));
+        if_let!(current_dt("current_date_time(%Y-%m-%d)")
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!(10, el.len())));
     }
 
     #[test]
     fn generator_test() {
-        if let Ok((_, gen)) = generator(" uuid() ") {
-            if let Json::Str(uuid) = gen.next() {
-                assert_eq!(uuid.len(), 36)
-            } else {
-                panic!("should be str")
-            }
-        } else {
-            panic!("panic!")
-        }
+        if_let!(generator(" uuid() ")
+                => Ok((_, g))
+                => if_let!(g.next() => Json::Str(el)
+                    => assert_eq!(36, el.len())));
 
-
-        if let Ok((_, gen)) = generator("sequence(1)") {
+        if_let!(generator("sequence(1)") => Ok((_, gen)) => {
             assert_eq!(Json::Num(2), gen.next());
             assert_eq!(Json::Num(3), gen.next());
             assert_eq!(Json::Num(4), gen.next());
-        } else {
-            panic!("panic!")
-        }
+        });
     }
 }

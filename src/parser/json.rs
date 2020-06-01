@@ -183,21 +183,15 @@ mod tests {
 
     #[test]
     fn limiter_test() {
-        if let Ok((_, g)) = generator_func("/* sequence(10) */") {
-            assert_eq!(Json::Num(11), g.next())
-        } else {
-            panic!("should be ok")
-        }
 
-        if let Ok((_, g)) = generator_func("/*uuid()*/") {
-            if let Json::Str(uuid) = g.next() {
-                assert_eq!(uuid.len(), 36)
-            } else {
-                panic!("should be ok")
-            }
-        } else {
-            panic!("should be ok")
-        }
+        if_let!(
+            generator_func("/* sequence(10) */") => Ok((_, g)) => assert_eq!(Json::Num(11), g.next())
+        );
+        if_let!(
+            generator_func("/*uuid()*/") => Ok((_, g))
+            => if_let!(g.next() => Json::Str(uuid) => assert_eq!(uuid.len(), 36))
+        );
+
     }
 
     #[test]
@@ -230,26 +224,22 @@ mod tests {
 
     #[test]
     fn generator_opt_test() {
-        match generator_opt(r#"/*
-                                     sequence(10) */ "#) {
-            Ok((_, Some(g))) => assert_eq!(Json::Num(11), g.next()),
-            r @ _ => panic!("{:?}", r)
-        }
-        match generator_opt(r#"sequence(10) */"#) {
-            Ok((_, None)) => (),
-            r @ _ => panic!("{:?}", r)
-        }
-        match generator_opt(r#"
+        if_let!(
+            generator_opt(r#"/*
+                                     sequence(10) */ "#) =>  Ok((_, Some(g)))
+            => assert_eq!(Json::Num(11), g.next())
+            );
+
+        if_let!( generator_opt(r#"sequence(10) */"#) =>  Ok((_, None))=> ());
+        if_let!(
+            generator_opt(r#"
         /* sequence(10) */
         "field":"string"
-        "#) {
-            Ok((s, Some(_))) => {
-                assert_eq!(s, r#"
-        "field":"string"
         "#)
-            }
-            r @ _ => panic!("{:?}", r)
-        }
+            =>  Ok((s, Some(_)))
+            => assert_eq!(s, r#"
+        "field":"string"
+        "#));
     }
 
 
@@ -274,14 +264,9 @@ mod tests {
     "id": 1
     }"#);
 
-        if let Ok((_, Json::Object(f))) = res {
-            if let Some(field) = f.get(0) {
-                assert_eq!(field.get_next(), Some(Json::Num(11)))
-            } else {
-                panic!("should be ok");
-            }
-        } else {
-            panic!("should be ok");
-        }
+        if_let!( res =>  Ok((_, Json::Object(f))) =>
+            if_let!(f.get(0) => Some(field) => assert_eq!(field.get_next(), Some(Json::Num(11))))
+        );
+
     }
 }

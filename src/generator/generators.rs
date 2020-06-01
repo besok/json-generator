@@ -176,10 +176,10 @@ impl<T: Clone + FromStr + Into<Json>> GeneratorFunc for RandomFromFile<T>
 fn from_string<T: FromStr>(v: String, d: &str) -> Vec<T>
     where <T as FromStr>::Err: Debug {
     let mut del = match d.trim() {
-        r#"\r\n"# =>"\r\n",
-        r#"\n"# =>"\n",
-        r#"\r"# =>"\r",
-        r#"\n\r"# =>"\n\r",
+        r#"\r\n"# => "\r\n",
+        r#"\n"# => "\n",
+        r#"\r"# => "\r",
+        r#"\n\r"# => "\n\r",
         _ => d
     };
 
@@ -220,57 +220,41 @@ impl GeneratorFunc for RandomArray {
 #[cfg(test)]
 mod tests {
     use crate::parser::Json;
-    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, from_string, RandomFromFile, RandomArray};
+    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList,
+                                       read_file_into_string, from_string, RandomFromFile, RandomArray};
     use crate::generator::{GeneratorFunc, Generator};
     use std::io::Error;
 
     #[test]
     fn array_test() {
-        let gen = Generator::new(RandomInt::new(1, 100));
-        let g = Generator::new(RandomArray::new(3, gen));
+        let g_int = Generator::new(RandomInt::new(1, 100));
+        let gen = Generator::new(RandomArray::new(3, g_int));
 
-        if let Json::Array(v) = g.next() {
-            assert_eq!(v.len(), 3);
-            for e in v.into_iter() {
-                if let Json::Num(el) = e {
-                    assert_eq!(el > 0 && el < 100, true)
-                } else {
-                    panic!("err")
+        if_let!(
+            gen.next() => Json::Array(v) => {
+                assert_eq!(v.len(), 3);
+                for e in v.into_iter() {
+                    if_let!(e => Json::Num(el) => assert_eq!(el > 0 && el < 100, true))
                 }
             }
-        } else {
-            panic!("err")
-        }
+        );
     }
 
     #[test]
     fn random_string_test() {
-        let mut g = RandomString::new(10);
-        if let Json::Str(el) = g.next() {
-            assert_eq!(el.len(), 10)
-        } else {
-            panic!("should be str")
-        }
+        if_let!(RandomString::new(10).next() => Json::Str(el) => assert_eq!(el.len(), 10));
     }
 
     #[test]
     fn random_uuid_test() {
         let mut g = UUID {};
-        if let Json::Str(el) = g.next() {
-            assert_eq!(el.len(), 36)
-        } else {
-            panic!("should be str")
-        }
+        if_let!(g.next() => Json::Str(el) => assert_eq!(el.len(), 36));
     }
+
 
     #[test]
     fn random_int_test() {
-        let mut g = RandomInt::new(-1000, 1000);
-        if let Json::Num(el) = g.next() {
-            assert_eq!(el < 1000, el > -1001);
-        } else {
-            panic!("should be str")
-        }
+        if_let!(RandomInt::new(-1000, 1000).next() => Json::Num(el) =>  assert_eq!(el < 1000, el > -1001));
     }
 
     #[test]
@@ -281,22 +265,16 @@ mod tests {
         assert_eq!(json1, json2);
 
         let mut x = CurrentDateTime { format: "%Y-%m-%d %H:%M:%S".to_string() };
-        if let Json::Str(el) = x.next() {
+        if_let!(x.next() => Json::Str(el) =>  {
             print!("{}", el);
-            assert_eq!(el.len(), 19)
-        } else {
-            panic!("should be str")
-        }
+            assert_eq!(el.len(), 19);
+        });
     }
 
     #[test]
     fn random_from_list_test() {
         let mut g = RandomFromList::new((1..10).collect());
-        if let Json::Num(el) = g.next() {
-            assert_eq!(el > 0, el < 10)
-        } else {
-            panic!("should be num")
-        }
+        if_let!(g.next() => Json::Num(el) =>  assert_eq!(el > 0, el < 10));
 
         let mut g: RandomFromList<i64> = RandomFromList::new(vec![]);
         assert_eq!(g.next(), Json::Null);
@@ -324,15 +302,8 @@ mod tests {
 
     #[test]
     fn from_file_test() {
-        match RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ",") {
-            Ok(ref mut g) => {
-                if let Json::Num(el) = g.next() {
-                    assert!(el > 0 && el < 7);
-                } else {
-                    panic!("num")
-                }
-            }
-            Err(_) => panic!("error, should be ok"),
-        };
+        let r = RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ",");
+        if_let!(r => Ok(ref mut g)
+            => if_let!(g.next() => Json::Num(el) => assert!(el > 0 && el < 7)));
     }
 }
