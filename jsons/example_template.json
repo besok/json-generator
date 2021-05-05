@@ -1,0 +1,16 @@
+{
+  "person": {
+    "is_active": true,
+    "|id": "sequence(1)",
+    "|update_tm": "current_date_time()",
+    "|name": "random_str(10,@,random_str(5))",
+    "|surname": "random_str_from_list(Eva,Vova,Vora,Revva,Rovva,Rana,Roska,Vovovka)",
+    "|age": "random_int(20,40)",
+    "|children_ids": "array(3,sequence(1))",
+    "address": {
+      "|street": "random_str(10)",
+      "house": 10,
+      "city": "Berlin"
+    }
+  }
+}

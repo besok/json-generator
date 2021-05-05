@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn from_file_test() {
         let r = RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ",");
-        if_let!(r => Ok(ref mut g)
+        if_let!(r => Ok(mut g)
             => if_let!(g.next() => Json::Num(el) => assert!(el > 0 && el < 7)));
     }
 }

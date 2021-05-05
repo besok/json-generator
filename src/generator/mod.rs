@@ -40,32 +40,34 @@ impl Debug for dyn GeneratorFunc {
     }
 }
 
+type Func = Rc<RefCell<dyn GeneratorFunc>>;
+
 /// the struct represents the generator which is essentially a wrapper to generalize GeneratorFunc
 #[derive(Debug)]
 pub struct Generator {
-    delegate: Rc<RefCell<dyn GeneratorFunc>>
+    function: Func
 }
 
 impl ToString for Generator {
     fn to_string(&self) -> String {
-        format!("Generator[{:?}]", self.delegate.clone().borrow().to_string())
+        format!("Generator[{:?}]", self.function.clone().borrow().to_string())
     }
 }
 
 
 impl Clone for Generator {
     fn clone(&self) -> Self {
-        Generator { delegate: self.delegate.clone() }
+        Generator { function: self.function.clone() }
     }
 }
 
 impl Generator {
     pub fn new<T: GeneratorFunc + 'static>(entity: T) -> Self {
         info!("create a generator({})", print_type_of(&entity));
-        Generator { delegate: Rc::new(RefCell::new(entity)) }
+        Generator { function: Rc::new(RefCell::new(entity)) }
     }
     pub fn next(&self) -> Json {
-        RefCell::borrow_mut(&self.delegate).next()
+        RefCell::borrow_mut(&self.function).next()
     }
 }
 
