@@ -10,6 +10,7 @@ use nom::error::ErrorKind;
 
 pub mod json;
 pub mod generator;
+mod structure;
 
 /// The base structure to work with json
 #[derive(Clone, Debug, PartialEq)]

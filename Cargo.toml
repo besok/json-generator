@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 nom = "5.0"
+serde_json = "1.0"
 rand = "0.7.3"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 chrono = "0.4"
