@@ -12,12 +12,12 @@ enum JsonGen {
     Gen(Generator),
 }
 
-impl ToString for JsonGen{
+impl ToString for JsonGen {
     fn to_string(&self) -> String {
         match self {
             Object(pairs) => {
                 let mut res = "{".to_string();
-                for (k,v) in pairs.iter(){
+                for (k, v) in pairs.iter() {
                     res.push_str(k.as_str());
                     res.push_str(":");
                     res.push_str(v.to_string().as_str());
@@ -25,18 +25,18 @@ impl ToString for JsonGen{
                 }
                 res.push_str("}");
                 res
-            },
+            }
             Array(elems) => {
                 let mut res = "[".to_string();
 
-                for e in elems.iter(){
+                for e in elems.iter() {
                     res.push_str(e.to_string().as_str());
                     res.push_str(",")
                 }
                 res.push_str("]");
                 res
             }
-            Plain(v) => v.to_string() ,
+            Plain(v) => v.to_string(),
             Gen(g) => g.to_string(),
         }
     }
@@ -75,6 +75,10 @@ impl JsonGen {
             plain => Ok(Plain((plain)))
         }
     }
+    fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
+        let value = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        JsonGen::new(value, indicator)
+    }
 }
 
 
@@ -91,6 +95,24 @@ mod tests {
         });
         let res = JsonGen::new(json, "|");
         assert!(res.is_ok());
-        println!("{}",res.unwrap().to_string());
+        println!("{}", res.unwrap().to_string());
+    }
+    #[test]
+    fn simple_failed_test() {
+        let json = json!({
+            "|field": "uuidds()",
+            "num" : 1
+        });
+        let res = JsonGen::new(json, "|");
+        println!("{}", res.err().unwrap());
+    }
+
+    #[test]
+    fn from_str_test() {
+        let res = JsonGen::from_str(
+            r#"{"|field": "uuid()","num" : 1}"#, "|",
+        );
+        assert!(res.is_ok());
+        println!("{}", res.unwrap().to_string());
     }
 }
