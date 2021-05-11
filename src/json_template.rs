@@ -1,18 +1,17 @@
-use serde_json::Value;
-use crate::generator::{Generator};
-use std::iter::Map;
-use crate::parser::structure::JsonGen::{Plain, Array, Object, Gen};
+use serde_json::{Value, Map};
+use crate::generator::{Generator, GeneratorFunc};
+use crate::json_template::JsonTemplate::{Plain, Array, Object, Gen};
 use crate::parser::generator::generator;
 
 #[derive(Debug)]
-enum JsonGen {
-    Object(Vec<(String, JsonGen)>),
-    Array(Vec<JsonGen>),
+pub enum JsonTemplate {
+    Object(Vec<(String, JsonTemplate)>),
+    Array(Vec<JsonTemplate>),
     Plain(Value),
     Gen(Generator),
 }
 
-impl ToString for JsonGen {
+impl ToString for JsonTemplate {
     fn to_string(&self) -> String {
         match self {
             Object(pairs) => {
@@ -42,8 +41,8 @@ impl ToString for JsonGen {
     }
 }
 
-impl JsonGen {
-    fn new(value: Value, indicator: &str) -> Result<Self, String> {
+impl JsonTemplate {
+   pub fn new(value: Value, indicator: &str) -> Result<Self, String> {
         match value {
             Value::Object(pairs) => {
                 let mut res_pairs = vec![];
@@ -60,7 +59,7 @@ impl JsonGen {
                             _ => return Err(format!("Error for field '{}' : a generator function should be a string.", k))
                         }
                     } else {
-                        res_pairs.push((k.clone(), JsonGen::new(v.clone(), indicator)?))
+                        res_pairs.push((k.clone(), JsonTemplate::new(v.clone(), indicator)?))
                     }
                 }
                 Ok(Object(res_pairs))
@@ -68,23 +67,40 @@ impl JsonGen {
             Value::Array(elems) => {
                 let mut res_elems = vec![];
                 for e in elems.iter() {
-                    res_elems.push(JsonGen::new(e.clone(), indicator)?)
+                    res_elems.push(JsonTemplate::new(e.clone(), indicator)?)
                 }
                 Ok(Array(res_elems))
             }
-            plain => Ok(Plain((plain)))
+            plain => Ok(Plain(plain))
         }
     }
-    fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
+   pub fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
         let value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        JsonGen::new(value, indicator)
+        JsonTemplate::new(value, indicator)
     }
 }
 
+impl GeneratorFunc for JsonTemplate {
+    fn next_value(&mut self) -> Value {
+        match self {
+            Object(gen_pairs) => {
+                let mut fields = serde_json::Map::new();
+                for (k, t) in gen_pairs.into_iter() {
+                    fields.insert(k.clone(), t.next_value());
+                }
+                Value::from(fields)
+            }
+
+            Array(elems) => Value::Array(elems.into_iter().map(|t| t.next_value()).collect()),
+            Plain(v) => v.clone(),
+            Gen(generator) => generator.next()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::structure::JsonGen;
+    use crate::json_template::JsonTemplate;
     use serde_json::{json, Value};
 
     #[test]
@@ -93,23 +109,24 @@ mod tests {
             "|field": "uuid()",
             "num" : 1
         });
-        let res = JsonGen::new(json, "|");
+        let res = JsonTemplate::new(json, "|");
         assert!(res.is_ok());
         println!("{}", res.unwrap().to_string());
     }
+
     #[test]
     fn simple_failed_test() {
         let json = json!({
             "|field": "uuidds()",
             "num" : 1
         });
-        let res = JsonGen::new(json, "|");
+        let res = JsonTemplate::new(json, "|");
         println!("{}", res.err().unwrap());
     }
 
     #[test]
     fn from_str_test() {
-        let res = JsonGen::from_str(
+        let res = JsonTemplate::from_str(
             r#"{"|field": "uuid()","num" : 1}"#, "|",
         );
         assert!(res.is_ok());

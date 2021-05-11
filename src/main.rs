@@ -6,24 +6,27 @@
 //! ```commandline
 //! json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder--to-curl '-X POST ip'
 //! ```
-use clap::{Arg, App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
+use simplelog::*;
+
 use crate::generator::generators::read_file_into_string;
-use crate::parser::{Json, parse_json, ParserError};
-use crate::sender::{Sender, ConsoleSender};
+use crate::sender::{ConsoleSender, Sender};
 use crate::sender::file::{FileSender, FolderSender};
 use crate::sender::http::CurlSender;
+use crate::json_template::JsonTemplate;
+use crate::generator::GeneratorFunc;
 
 #[macro_use]
 extern crate log;
 extern crate simplelog;
 
-use simplelog::*;
 #[macro_use]
-mod tools;
+mod r#macro;
 
 mod parser;
 mod generator;
 mod sender;
+mod json_template;
 
 
 fn main() {
@@ -32,7 +35,7 @@ fn main() {
         SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap()
     }
 
-    generate(json(&args), r(&args), args.is_present("pretty-js"), &mut output(&args))
+    generate(&mut json(&args), r(&args), args.is_present("pretty-js"), &mut output(&args))
 }
 
 fn get_args() -> ArgMatches {
@@ -117,13 +120,13 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
     outputs
 }
 
-fn generate(json: Json, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
+fn generate(json: &mut JsonTemplate, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
     for _ in 0..rep {
         for mut v in outputs.iter_mut() {
             match if pretty {
-                v.send_pretty(json.next().clone())
+                v.send_pretty(json.next_value())
             } else {
-                v.send(json.next().to_string())
+                v.send(json.next_value().to_string())
             } {
                 Ok(res) => info!("sending json : {}", res),
                 Err(e) => error!("sending json[error] : {}", e.to_string())
@@ -132,20 +135,17 @@ fn generate(json: Json, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Send
     }
 }
 
-fn json(args: &ArgMatches) -> Json {
+fn json(args: &ArgMatches) -> JsonTemplate {
     info!("parsing json:");
     let txt = match (args.value_of("json-body"), args.value_of("json-file")) {
         (Some(body), _) => String::from(body),
         (None, Some(file)) => read_file_into_string(file)
-            .expect("the input file or body containing json should be provided!"),
-        (None, None) => panic!("the input file or body containing json should be provided!")
+            .expect("the input file or body containing he json template should be provided!"),
+        (None, None) => panic!("the input file or body containing the json template should be provided!")
     };
-    info!("got json {}", txt);
-    match parse_json(txt.as_str()) {
-        Ok(json) => {
-            info!("parsed json:{:?}", json);
-            json
-        }
+    info!("got the json template {}", txt);
+    match JsonTemplate::from_str(txt.as_str(),"|") {
+        Ok(t) => t,
         Err(e) => panic!("error while parsing json : {:?}", e),
     }
 }

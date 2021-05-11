@@ -3,7 +3,6 @@
 pub mod generators;
 
 use std::fmt::{Debug, Formatter, Error};
-use crate::parser::Json;
 use std::collections::HashMap;
 use std::thread::Thread;
 use rand::prelude::ThreadRng;
@@ -16,13 +15,14 @@ use std::sync::Mutex;
 use once_cell::sync::Lazy;
 use std::rc::Rc;
 use std::any::{type_name, Any};
+use serde_json::Value;
 
 /// The trait represents the function to generate jsons
 pub trait GeneratorFunc {
-    fn next(&mut self) -> Json;
+    fn next_value(&mut self) -> Value;
 }
 
-/// for loggin purposes
+/// for logging purposes
 pub fn print_type_of<T>(_: &T) -> String {
     format!("{}", std::any::type_name::<T>())
 }
@@ -66,14 +66,11 @@ impl Generator {
         info!("create a generator({})", print_type_of(&entity));
         Generator { function: Rc::new(RefCell::new(entity)) }
     }
-    pub fn next(&self) -> Json {
-        RefCell::borrow_mut(&self.function).next()
+    pub fn next(&self) -> Value {
+        RefCell::borrow_mut(&self.function).next_value()
     }
 }
 
 
 #[cfg(test)]
-mod tests {
-    use crate::parser::Json;
-    use crate::generator::generators::Constant;
-}
+mod tests {}

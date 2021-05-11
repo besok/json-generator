@@ -1,7 +1,6 @@
 use std::process::{Command, Output, Child};
 use std::io;
-use crate::sender::{Sender, PrettyJson, S};
-use crate::parser::Json;
+use crate::sender::{Sender, S};
 use std::io::Error;
 
 /// the struct which implements the Sender trait and allows
