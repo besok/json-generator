@@ -41,10 +41,10 @@ fn str_to_int(i: &str) -> IResult<&str, i64> {
 }
 
 pub fn elem(v: &str) -> IResult<&str, &str> {
-    take_while(move |c| c != ')' && c != ',')(v)
+    preceded(sp, take_while(move |c| c != ')' && c != ','))(v)
 }
 
-fn gen_func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
+fn func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
     where F: Fn(&'a str) -> IResult<&'a str, Generator> {
     preceded(sp, preceded(
         tag(label),
@@ -55,8 +55,9 @@ fn gen_func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<
                 terminated(
                     extractor,
                     preceded(
-                        sp,
-                        preceded(char(')'), sp))),
+                        sp, char(')'),
+                    ),
+                ),
             ),
         ),
     ))
@@ -68,22 +69,24 @@ fn args<'a, F>(transformer: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator
 }
 
 fn current_dt(i: &str) -> IResult<&str, Generator> {
-    gen_func("dt",
-             map_res(take_while(end_br),
-                     |s: &str| {
-                         let format =
-                             if s.chars().filter(|c| !c.is_whitespace()).count() < 2 { "%Y-%m-%d %H:%M:%S".to_string() } else { s.to_string() };
-                         new(CurrentDateTime { format })
-                     }))(i)
+    func("dt",
+         args(|elems| {
+             let format =
+                 elems.get(0)
+                     .filter(|e| !e.is_empty())
+                     .map(move |f| f.trim())
+                     .unwrap_or("%Y-%m-%d %H:%M:%S").to_string();
+             new(CurrentDateTime { format })
+         }))(i)
 }
 
 fn uuid(i: &str) -> IResult<&str, Generator> {
-    gen_func("uuid", args(|_| { new(UUID {}) }))(i)
+    func("uuid", args(|_| { new(UUID {}) }))(i)
 }
 
 
 fn sequence(i: &str) -> IResult<&str, Generator> {
-    gen_func("seq", args(|elems| {
+    func("seq", args(|elems| {
         new({
             let val = if let Some(Ok(new_val)) = elems.get(0).map(|e| e.parse()) {
                 new_val
@@ -101,7 +104,7 @@ fn sequence(i: &str) -> IResult<&str, Generator> {
 }
 
 fn random_string(i: &str) -> IResult<&str, Generator> {
-    gen_func("str", args(|elems| {
+    func("str", args(|elems| {
         new({
             let n = if let Some(Ok(new_n)) = elems.get(0).map(|e| e.parse()) {
                 new_n
@@ -309,7 +312,7 @@ mod tests {
 
     #[test]
     fn current_dt_test() {
-        if_let!(current_dt("dt ()")
+        if_let!(current_dt("dt()")
                 => Ok((_, g))
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!(19, el.len())));
@@ -318,10 +321,14 @@ mod tests {
                 => Ok((_, g))
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!(19, el.len())));
-        if_let!(current_dt("dt(%Y-%m-%d)")
+
+        if_let!(current_dt("dt( %Y-%m-%d )")
                 => Ok((_, g))
                 => if_let!(g.next() => Value::String(el)
-                    => assert_eq!(10, el.len())));
+                    => {
+                    println!("{}",el);
+                    assert_eq!(10, el.len())
+                    }));
     }
 
     #[test]
