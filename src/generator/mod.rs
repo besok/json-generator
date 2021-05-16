@@ -73,4 +73,22 @@ impl Generator {
 
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::generator::{GeneratorFunc, Generator};
+    use serde_json::Value;
+
+    struct SimpleGenFun{}
+    impl GeneratorFunc for SimpleGenFun{
+        fn next_value(&mut self) -> Value {
+            Value::Null
+        }
+
+    }
+
+
+    #[test]
+    fn to_string_test(){
+        let f = Generator::new(SimpleGenFun { });
+        if_let!(f.next() => f.next() => assert_eq!(f.next(),Value::Null))
+    }
+}

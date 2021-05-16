@@ -22,7 +22,7 @@
       "street": "Grip",
       /*random_int(1,100)*/
       "house": 10,
-      /* random_str_from_file(C:\projects\json-generator\jsons\cities.txt,\r\n)*/
+      /* random_str_from_file(C:\projects\json-generator\jsons\cities,\r\n)*/
       "city": "Berlin"
     }
   }

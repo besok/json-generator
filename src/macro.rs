@@ -7,18 +7,21 @@ macro_rules! if_let {
             panic!(format!("the epr {:?} is not equal to expected one",$gen_res))
         }
 
-    }
-}
+    };
 
+    ($left:expr => $right:expr => $next_check:expr) => {
+        if $left == $right {
+          $next_check
+        } else{
+            panic!(format!("the left {:?} is not equal to the right",$left))
+        }
+
+    }
+
+}
 
 #[cfg(test)]
 mod tests {
     use crate::generator::generators::{RandomString, RandomInt};
-    use crate::generator::GeneratorFunc;
-
-
-    // #[test]
-    // fn simple_test() {
-    //     if_let!(RandomInt::new(10,20).next() => Json::Num(el) => assert_eq!(el > 9, el < 20));
-    // }
+    use serde_json::Value;
 }

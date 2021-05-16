@@ -41,8 +41,14 @@ impl ToString for JsonTemplate {
     }
 }
 
+fn parse_generator(gen_str: &str) -> Result<Generator, String> {
+    generator(gen_str)
+        .map(|e| e.1)
+        .map_err(|e| e.to_string())
+}
+
 impl JsonTemplate {
-   pub fn new(value: Value, indicator: &str) -> Result<Self, String> {
+    pub fn new(value: Value, indicator: &str) -> Result<Self, String> {
         match value {
             Value::Object(pairs) => {
                 let mut res_pairs = vec![];
@@ -50,11 +56,10 @@ impl JsonTemplate {
                     if k.starts_with(indicator) {
                         match v {
                             Value::String(gen_str) => {
-                                let internal_gen = generator(gen_str)
-                                    .map(|e| e.1)
-                                    .map_err(|e| e.to_string())?;
-                                let new_k = String::from(k.strip_prefix(indicator).ok_or("unreachable")?);
-                                res_pairs.push((new_k, Gen(internal_gen)))
+                                res_pairs.push((
+                                    k.strip_prefix(indicator).ok_or("unreachable")?.to_string(),
+                                    Gen(parse_generator(gen_str)?)
+                                ))
                             }
                             _ => return Err(format!("Error for field '{}' : a generator function should be a string.", k))
                         }
@@ -74,7 +79,7 @@ impl JsonTemplate {
             plain => Ok(Plain(plain))
         }
     }
-   pub fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
+    pub fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
         let value = serde_json::from_str(json).map_err(|e| e.to_string())?;
         JsonTemplate::new(value, indicator)
     }

@@ -33,8 +33,8 @@ impl GeneratorFunc for UUID {
 }
 
 pub struct Sequence {
-    pub val: i64,
-    pub step: i64,
+    pub val: i32,
+    pub step: i32,
 }
 
 
@@ -68,23 +68,38 @@ impl GeneratorFunc for RandomInt {
 pub struct RandomString {
     len: usize,
     rng: ThreadRng,
+    prefix: String,
+    postfix: String,
 }
 
 impl RandomString {
+    pub fn new_with(len: usize, prefix: String, postfix: String) -> Self {
+        RandomString {
+            len,
+            prefix,
+            postfix,
+            rng: rand::thread_rng(),
+        }
+    }
     pub fn new(len: usize) -> Self {
-        RandomString { len, rng: rand::thread_rng() }
+        RandomString {
+            len,
+            rng: rand::thread_rng(),
+            prefix: String::new(),
+            postfix: String::new(),
+        }
     }
 }
 
 
 impl GeneratorFunc for RandomString {
     fn next_value(&mut self) -> Value {
-        Value::from(String::from_iter(
+        let random_str = String::from_iter(
             self.rng
                 .sample_iter(&Alphanumeric)
                 .take(self.len)
-                .into_iter()
-        ))
+                .into_iter());
+        Value::from(format!("{}{}{}", self.prefix, random_str, self.postfix))
     }
 }
 
@@ -127,6 +142,8 @@ impl<T> GeneratorFunc for RandomFromList<T>
     }
 }
 
+//todo in general with small files, having them in the memory is fine but if it is going to be a pitfall,
+// better to keep a path and read the file randomly.
 pub struct RandomFromFile<T: FromStr + Clone + Into<Value>>
     where <T as FromStr>::Err: Debug {
     path: String,
@@ -199,92 +216,141 @@ impl GeneratorFunc for RandomArray {
     }
 }
 
-//
-// #[cfg(test)]
-// mod tests {
-//     use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList,
-//                                        read_file_into_string, process_string, RandomFromFile, RandomArray};
-//     use crate::generator::{GeneratorFunc, Generator};
-//     use std::io::Error;
-//
-//     #[test]
-//     fn array_test() {
-//         let g_int = Generator::new(RandomInt::new(1, 100));
-//         let gen = Generator::new(RandomArray::new(3, g_int));
-//
-//         if_let!(
-//             gen.next() => Json::Array(v) => {
-//                 assert_eq!(v.len(), 3);
-//                 for e in v.into_iter() {
-//                     if_let!(e => Json::Num(el) => assert_eq!(el > 0 && el < 100, true))
-//                 }
-//             }
-//         );
-//     }
-//
-//     #[test]
-//     fn random_string_test() {
-//         if_let!(RandomString::new(10).next_value() => Json::Str(el) => assert_eq!(el.len(), 10));
-//     }
-//
-//     #[test]
-//     fn random_uuid_test() {
-//         let mut g = UUID {};
-//         if_let!(g.next_value() => Json::Str(el) => assert_eq!(el.len(), 36));
-//     }
-//
-//
-//     #[test]
-//     fn random_int_test() {
-//         if_let!(RandomInt::new(-1000, 1000).next_value() => Json::Num(el) =>  assert_eq!(el < 1000, el > -1001));
-//     }
-//
-//     #[test]
-//     fn current_ts_test() {
-//         let mut x = CurrentDateTime { format: "%Y-%m-%d".to_string() };
-//         let json1 = x.next_value();
-//         let json2 = x.next_value();
-//         assert_eq!(json1, json2);
-//
-//         let mut x = CurrentDateTime { format: "%Y-%m-%d %H:%M:%S".to_string() };
-//         if_let!(x.next_value() => Json::Str(el) =>  {
-//             print!("{}", el);
-//             assert_eq!(el.len(), 19);
-//         });
-//     }
-//
-//     #[test]
-//     fn random_from_list_test() {
-//         let mut g = RandomFromList::new((1..10).collect());
-//         if_let!(g.next_value() => Json::Num(el) =>  assert_eq!(el > 0, el < 10));
-//
-//         let mut g: RandomFromList<i64> = RandomFromList::new(vec![]);
-//         assert_eq!(g.next_value(), Json::Null);
-//     }
-//
-//     #[test]
-//     fn test_string_from_file() {
-//         match read_file_into_string(r#"C:\projects\json-generator\jsons\list.txt"#) {
-//             Ok(v) => assert_eq!("1,2,3,4,5,6", v),
-//             Err(e) => panic!("error {}", e),
-//         };
-//     }
-//
-//     #[test]
-//     fn from_string_test() {
-//         let vec = process_string::<String>("a,b,c".to_string(), ",");
-//         assert_eq!(vec, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
-//
-//         let vec = process_string::<i32>("1,2,3".to_string(), ",");
-//         assert_eq!(vec, vec![1, 2, 3]);
-//
-//         let vec = process_string::<i32>("1,c,3".to_string(), ",");
-//         assert_eq!(vec, vec![1, 3]);
-//     }
-//
-//     #[test]
-//     fn from_file_test() {
-//         let r = RandomFromFile::<i64>::new(r#"C:\projects\json-generator\jsons\list.txt"#, ",");
-//         if_let!(r => Ok(mut g) => if_let!(g.next_value() => Json::Num(el) => assert!(el > 0 && el < 7)));
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, process_string, RandomFromFile, RandomArray, Null, Sequence};
+    use crate::generator::{GeneratorFunc, Generator};
+    use std::io::Error;
+    use serde_json::Value;
+    use std::env;
+
+    fn gen<T: GeneratorFunc + 'static>(f: T) -> Generator {
+        Generator::new(f)
+    }
+
+    #[test]
+    fn null_test() {
+        if_let!(gen(Null{}).next() => Value::Null => ())
+    }
+
+    #[test]
+    fn random_uuid_test() {
+        if_let!(gen(UUID {}).next() => Value::String(el) => assert_eq!(el.len(), 36));
+    }
+
+    #[test]
+    fn sequence_test() {
+        let g1 = gen(Sequence { val: 1, step: 2 });
+
+        assert_eq!(g1.next().as_i64(), Some(3));
+        assert_eq!(g1.next().as_i64(), Some(5));
+
+        let g1 = gen(Sequence { val: 1, step: -1 });
+
+        assert_eq!(g1.next().as_i64(), Some(0));
+        assert_eq!(g1.next().as_i64(), Some(-1));
+    }
+
+    #[test]
+    fn random_int_test() {
+        let g = gen(RandomInt::new(-1000, 1000));
+
+        if_let!(g.next().as_i64() => Some(el) => assert!(el >= -1000 && el <= 1000));
+        if_let!(g.next().as_i64() => Some(el) => assert!(el >= -1000 && el <= 1000));
+        if_let!(g.next().as_i64() => Some(el) => assert!(el >= -1000 && el <= 1000));
+    }
+
+    #[test]
+    fn random_string_test() {
+        if_let!(gen(RandomString::new(10)).next() => Value::String(el) => assert_eq!(el.len(), 10));
+        let g = gen(RandomString::new_with(10, "abc".to_string(), "cba".to_string()));
+        if_let!(
+            g.next() => Value::String(el) => {
+                assert_eq!(el.len(), 16);
+                assert!(el.starts_with("abc"));
+                assert!(el.ends_with("cba"));
+            }
+       );
+    }
+
+    #[test]
+    fn current_ts_test() {
+        let mut x = gen(CurrentDateTime { format: "%Y-%m-%d".to_string() });
+        if_let!(x.next() => x.next() => ());
+
+        let mut x = CurrentDateTime { format: "%Y-%m-%d %H:%M:%S".to_string() };
+        if_let!(x.next_value() => Value::String(el) => {
+            print!("{}", el);
+            assert_eq!(el.len(), 19);
+        });
+    }
+
+    #[test]
+    fn random_from_list_test() {
+        let mut gn = gen(RandomFromList::new((1..10).collect()));
+        if_let!(gn.next() => Value::Number(el) =>  {
+            let el = el.as_i64().unwrap();
+            assert_eq!(el > 0, el < 10)
+        });
+
+        let mut gf: RandomFromList<i64> = RandomFromList::new(vec![]);
+        let mut gen = gen(gf);
+        assert_eq!(gen.next(), Value::Null);
+    }
+
+    #[test]
+    fn from_file_test() {
+        let g = RandomFromFile::<i64>::new(r#"jsons/numbers"#, ",")
+            .map(|f| Generator::new(f));
+
+        if_let!(g => Ok(mut g) => if_let!(g.next() => Value::Number(el) => {
+            let el = el.as_i64().unwrap();
+            assert!(el > 0 && el < 10)
+        }));
+
+        let g = RandomFromFile::<String>::new(r#"jsons/cities"#, "\n")
+            .map(|f| Generator::new(f));
+
+        if_let!(g => Ok(mut g) => if_let!(g.next() => Value::String(city) => {
+            assert!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin".contains(&city))
+        }));
+    }
+
+    #[test]
+    fn read_file_from_path() {
+        match read_file_into_string("jsons/numbers") {
+            Ok(f) => assert_eq!(f, "1,2,3,4,5,6,7,8,9"),
+            Err(e) => panic!("error {}", e)
+        };
+    }
+
+    #[test]
+    fn from_string_test() {
+        let vec = process_string::<String>("a,b,c".to_string(), ",");
+        assert_eq!(vec, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+
+        let vec = process_string::<i32>("1,2,3".to_string(), ",");
+        assert_eq!(vec, vec![1, 2, 3]);
+
+        let vec = process_string::<i32>("1,c,3".to_string(), ",");
+        assert_eq!(vec, vec![1, 3]);
+    }
+
+    #[test]
+    fn array_test() {
+        let g_int = gen(RandomInt::new(1, 100));
+        let gen = gen(RandomArray::new(3, g_int));
+
+        if_let!(
+            gen.next() => Value::Array(elems) => {
+                assert_eq!(elems.len(), 3);
+                for e in elems.into_iter() {
+                    if_let!(e => Value::Number(el) => {
+                    let el = el.as_i64().unwrap();
+                    assert_eq!(el > 0 && el < 100, true)
+                    })
+                }
+            }
+        );
+    }
+}

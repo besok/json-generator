@@ -18,6 +18,7 @@ use nom::bytes::complete::is_not;
 use std::str::FromStr;
 use nom::error::{ErrorKind, ParseError};
 
+
 fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     let chars = " \t\r\n";
     take_while(move |c| chars.contains(c))(i)
@@ -27,62 +28,99 @@ fn end_br(c: char) -> bool {
     c != ')'
 }
 
+fn is_numeric_with_neg(c: char) -> bool {
+    char::is_numeric(c) || c == '-'
+}
+
 fn str_to_int(i: &str) -> IResult<&str, i64> {
-    map_res(take_while1(char::is_numeric),
+    map_res(take_while1(is_numeric_with_neg),
             |s: &str| {
                 let res: Result<i64, ParseIntError> = s.parse();
                 res
             })(i)
 }
 
-fn current_dt(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("current_date_time"),
-             preceded(preceded(char('('),sp),
-                 terminated(
-                     map_res(take_while(end_br),
-                             |s: &str| {
-                                 let format =
-                                     if s.len() < 2 {
-                                         "%Y-%m-%d %H:%M:%S".to_string()
-                                     } else { s.to_string() };
-                                 new(CurrentDateTime { format })
-                             }),
-                     preceded(sp, char(')')),
-                 ),
-             ))(i)
+pub fn elem(v: &str) -> IResult<&str, &str> {
+    take_while(|c| c != ')' && c != ',')(v)
 }
 
-// fn sequence(i: &str) -> IResult<&str, Generator> {
-//     preceded(tag("sequence("),
-//              terminated(
-//                  map_res(take_while1(char::is_numeric),
-//                          |s: &str| {
-//                              let res: Result<Generator, ParseIntError> =
-//                                  Ok(Generator::new(Sequence { val: s.parse()? }));
-//                              res
-//                          })
-//                  , char(')'),
-//              ),
-//     )(i)
-// }
+fn gen_func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
+    where F: Fn(&'a str) -> IResult<&'a str, Generator> {
+    preceded(sp, preceded(
+        tag(label),
+        preceded(
+            sp,
+            preceded(
+                char('('),
+                terminated(
+                    extractor,
+                    preceded(
+                        sp,
+                        preceded(char(')'), sp))),
+            ),
+        ),
+    ))
+}
+
+fn args<'a, F>(transformer: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
+    where F: Fn(Vec<&str>) -> Result<Generator, GenError> {
+    map_res(separated_list(char(','), elem), transformer)
+}
+
+fn current_dt(i: &str) -> IResult<&str, Generator> {
+    gen_func("dt",
+             map_res(take_while(end_br),
+                     |s: &str| {
+                         let format =
+                             if s.chars().filter(|c| !c.is_whitespace()).count() < 2 { "%Y-%m-%d %H:%M:%S".to_string() } else { s.to_string() };
+                         new(CurrentDateTime { format })
+                     }))(i)
+}
 
 fn uuid(i: &str) -> IResult<&str, Generator> {
-    map_res(tag("uuid()"), |_: &str| {
-        new(UUID {})
-    })(i)
+    gen_func("uuid", args(|_| { new(UUID {}) }))(i)
+}
+
+
+fn sequence(i: &str) -> IResult<&str, Generator> {
+    gen_func("seq", args(|elems| {
+        new({
+            let val = if let Some(Ok(new_val)) = elems.get(0).map(|e| e.parse()) {
+                new_val
+            } else { 0 };
+
+            let step =
+                if let Some(Ok(new_step)) = elems.get(1).map(|e| e.parse()) {
+                    new_step
+                } else { 1 };
+
+            Sequence { val, step }
+        })
+    }),
+    )(i)
 }
 
 fn random_string(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("random_str("),
-             terminated(
-                 map_res(take_while1(char::is_numeric),
-                         |s: &str| {
-                             let res: Result<Generator, ParseIntError> =
-                                 Ok(Generator::new(RandomString::new(s.parse()?)));
-                             res
-                         })
-                 , char(')'),
-             ),
+    gen_func("str", args(|elems| {
+        new({
+            let n = if let Some(Ok(new_n)) = elems.get(0).map(|e| e.parse()) {
+                new_n
+            } else { 0 };
+
+            let prefix =
+                if let Some(Ok(new_p)) = elems.get(1).map(|e| e.parse()) {
+                    new_p
+                } else { String::new() };
+
+            let suffix =
+                if let Some(Ok(new_s)) = elems.get(2).map(|e| e.parse()) {
+                    new_s
+                } else { String::new() };
+
+
+            RandomString::new_with(n, prefix, suffix)
+        })
+    }),
     )(i)
 }
 
@@ -96,7 +134,7 @@ fn random_int(i: &str) -> IResult<&str, Generator> {
                                  _ => Err(GenError::new())
                              }
                          }),
-                 preceded(sp, char(')')),
+                 preceded(sp, preceded(char(')'), sp)),
              ),
     )(i)
 }
@@ -212,6 +250,7 @@ fn random_array(i: &str) -> IResult<&str, Generator> {
 pub fn generator(i: &str) -> IResult<&str, Generator> {
     preceded(sp,
              alt((
+                 sequence,
                  uuid,
                  random_string,
                  random_int,
@@ -262,12 +301,82 @@ impl Display for GenError {
 
 #[cfg(test)]
 mod tests {
-    // use crate::parser::generator::{uuid, generator, current_dt, random_string, random_int,
-    //                                random_str_from_file, random_int_from_file, random_str_from_list,
-    //                                random_int_from_list, random_array};
-    // use nom::error::ErrorKind;
-    // use crate::generator::Generator;
+    use crate::parser::generator::{uuid, generator, current_dt, random_string, random_int,
+                                   random_array};
+    use nom::error::ErrorKind;
+    use crate::generator::Generator;
+    use serde_json::Value;
 
+    #[test]
+    fn current_dt_test() {
+        if_let!(current_dt("dt ()")
+                => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                    => assert_eq!(19, el.len())));
+
+        if_let!(current_dt(" dt (  ) ")
+                => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                    => assert_eq!(19, el.len())));
+        if_let!(current_dt("dt(%Y-%m-%d)")
+                => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                    => assert_eq!(10, el.len())));
+    }
+
+    #[test]
+    fn uuid_test() {
+        if_let!(uuid("uuid()") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
+        if_let!(uuid(" uuid ( ) ") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
+    }
+
+    #[test]
+    fn seq_test() {
+        if_let!(generator("seq(1)") => Ok((_, gen)) => {
+            assert_eq!(Some(2), gen.next().as_i64());
+            assert_eq!(Some(3), gen.next().as_i64());
+            assert_eq!(Some(4), gen.next().as_i64());
+        });
+
+        if_let!(generator("seq(-1)") => Ok((_, gen)) => {
+            assert_eq!(Some(0), gen.next().as_i64());
+            assert_eq!(Some(1), gen.next().as_i64());
+            assert_eq!(Some(2), gen.next().as_i64());
+        });
+
+        if_let!(generator("seq(-1,-1)") => Ok((_, gen)) => {
+            assert_eq!(Some(-2), gen.next().as_i64());
+            assert_eq!(Some(-3), gen.next().as_i64());
+            assert_eq!(Some(-4), gen.next().as_i64());
+        });
+        if_let!(generator("seq(10,-10)") => Ok((_, gen)) => {
+            assert_eq!(Some(0), gen.next().as_i64());
+            assert_eq!(Some(-10), gen.next().as_i64());
+            assert_eq!(Some(-20), gen.next().as_i64());
+        });
+    }
+
+    #[test]
+    fn random_string_test() {
+        if_let!(random_string("str(10)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 10)));
+        if_let!(random_string("str(abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 0)));
+        if_let!(random_string("str(10,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+            assert_eq!(el.len(), 13);
+            assert!(el.starts_with("abc"));
+            }));
+        if_let!(random_string("str(10,,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+            assert_eq!(el.len(), 13);
+            assert!(el.ends_with("abc"));
+            }));
+        if_let!(random_string("str(10,cba,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+            assert_eq!(el.len(), 16);
+            assert!(el.ends_with("abc"));
+            assert!(el.starts_with("cba"));
+            }));
+        if_let!(random_string("str(0,jimmy_smith,@gmail.com)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+            assert_eq!(el, "jimmy_smith@gmail.com");
+            }));
+    }
 
     // #[test]
     // fn random_int_array_test() {
@@ -280,26 +389,6 @@ mod tests {
     // }
     //
     //
-    // #[test]
-    // fn seq_gen_test() {
-    //     if let Ok((_, el)) = sequence("sequence(10)") {
-    //         assert_eq!(Json::Num(11), el.next());
-    //         assert_eq!(Json::Num(12), el.next());
-    //         assert_eq!(Json::Num(13), el.next());
-    //     }
-    // }
-    //
-    // #[test]
-    // fn uuid_test() {
-    //     if_let!(uuid("uuid()") => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el) => assert_eq!(el.len(), 36)));
-    // }
-    //
-    // #[test]
-    // fn random_string_test() {
-    //     if_let!(random_string("random_str(10)") => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el) => assert_eq!(el.len(), 10)));
-    // }
     //
     // #[test]
     // fn random_int_test() {
@@ -323,7 +412,7 @@ mod tests {
     //
     // #[test]
     // fn random_str_from_file_nl_test() {
-    //     if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\cities.txt, \r\n)"#)
+    //     if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\cities, \r\n)"#)
     //             => Ok((_, g))
     //             => if_let!(g.next() => Json::Str(el)
     //                 => assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
@@ -349,31 +438,5 @@ mod tests {
     //             => Ok((_, g))
     //             => if_let!(g.next() => Json::Num(el)
     //                 => assert_eq!(el > 0 && el < 7, true)));
-    // }
-    //
-    // #[test]
-    // fn current_dt_test() {
-    //     if_let!(current_dt("current_date_time ()")
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!(19, el.len())));
-    //     if_let!(current_dt("current_date_time(%Y-%m-%d)")
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!(10, el.len())));
-    // }
-    //
-    // #[test]
-    // fn generator_test() {
-    //     if_let!(generator(" uuid () ")
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!(36, el.len())));
-    //
-    //     if_let!(generator("sequence(1)") => Ok((_, gen)) => {
-    //         assert_eq!(Json::Num(2), gen.next());
-    //         assert_eq!(Json::Num(3), gen.next());
-    //         assert_eq!(Json::Num(4), gen.next());
-    //     });
     // }
 }

@@ -24,11 +24,9 @@ impl FolderSender {
                 if !Path::new(path.as_str()).exists() {
                     match create_dir_all(path.as_str()) {
                         Ok(_) => (),
-                        Err(e) => panic!(
-                            format!("error occuring while creating or open the file:{}",
-                                    e.to_string())),
+                        Err(e) => panic!("error occurring while creating or open the file:{}", e.to_string()),
                     }
-                } else { panic!(format!("the error occurs with output file: {}", e.to_string())) }
+                } else { panic!("the error occurs with output file: {}", e.to_string()) }
         }
         FolderSender { path, idx: 0 }
     }
@@ -78,7 +76,7 @@ impl FileSender {
         match metadata(path.clone()) {
             Ok(m) => {
                 if m.is_dir() {
-                    panic!("the output path to file should point out to file not a folder.");
+                    panic!("the output path to file should point out to a file not a folder.");
                 }
             }
             Err(_) => match create_file(path.as_str()) {

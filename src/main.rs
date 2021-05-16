@@ -123,13 +123,14 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
 fn generate(json: &mut JsonTemplate, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
     for _ in 0..rep {
         for mut v in outputs.iter_mut() {
-            match if pretty {
+            let res = if pretty {
                 v.send_pretty(json.next_value())
             } else {
                 v.send(json.next_value().to_string())
-            } {
-                Ok(res) => info!("sending json : {}", res),
-                Err(e) => error!("sending json[error] : {}", e.to_string())
+            };
+            match res {
+                Ok(res) => info!("sending json, success : {}", res),
+                Err(e) => error!("sending json, error : {}", e)
             }
         }
     }
@@ -144,7 +145,7 @@ fn json(args: &ArgMatches) -> JsonTemplate {
         (None, None) => panic!("the input file or body containing the json template should be provided!")
     };
     info!("got the json template {}", txt);
-    match JsonTemplate::from_str(txt.as_str(),"|") {
+    match JsonTemplate::from_str(txt.as_str(), "|") {
         Ok(t) => t,
         Err(e) => panic!("error while parsing json : {:?}", e),
     }

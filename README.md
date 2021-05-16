@@ -23,7 +23,7 @@ The function can be added to json file above the proper field with /* */ distinc
 | random_str_from_list | list of values | the list of string | random_str_from_list(a,b,c,d) |
 | random_int_from_list | list of values | list of numbers | random_int_from_list(1,2,3,4,5) |
 | uuid |  | generated uuid  | uuid() |
-| current_date_time | format | the current date and time. By default can be ommited  and '%Y-%m-%d %H:%M:%S' will be used | currnet_date_time(%Y-%m-%d) |
+| dt | format | the current date and time. By default can be ommited  and '%Y-%m-%d %H:%M:%S' will be used | currnet_date_time(%Y-%m-%d) |
 | array | number of elements, generator for elements | the generator to get the array filled. | array(10,random_int(1,10)) |
 
 
