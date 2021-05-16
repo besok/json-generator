@@ -41,7 +41,7 @@ fn str_to_int(i: &str) -> IResult<&str, i64> {
 }
 
 pub fn elem(v: &str) -> IResult<&str, &str> {
-    take_while(|c| c != ')' && c != ',')(v)
+    take_while(move |c| c != ')' && c != ',')(v)
 }
 
 fn gen_func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
