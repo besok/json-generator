@@ -274,15 +274,6 @@ fn new<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
     Ok(Generator::new(gf))
 }
 
-//todo exception will not be shown : at the end it will be suppressed
-fn new_if_ok<T: GeneratorFunc + 'static>(gf: Result<T, std::io::Error>) -> Result<Generator, GenError> {
-    match gf {
-        Ok(f) => Ok(Generator::new(f)),
-        Result::Err(e) => Err(GenError::new_with(e.to_string())),
-    }
-}
-
-
 #[derive(Debug)]
 pub struct GenError {
     reason: String

@@ -1,14 +1,14 @@
 {
   "person": {
-    "is_active": true,
+    "is_active": "bool()",
     "|id": "sequence(1)",
-    "|update_tm": "current_date_time()",
-    "|name": "random_str(10,@,random_str(5))",
+    "|update_tm": "dt()",
+    "|name": "str(10,boris.,@gmail.com)",
     "|surname": "random_str_from_list(Eva,Vova,Vora,Revva,Rovva,Rana,Roska,Vovovka)",
-    "|age": "random_int(20,40)",
+    "|age": "int(,40)",
     "|children_ids": "array(3,sequence(1))",
     "address": {
-      "|street": "random_str(10)",
+      "|street": "str(10,,street)",
       "house": 10,
       "city": "Berlin"
     }
