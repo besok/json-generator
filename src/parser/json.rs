@@ -6,7 +6,6 @@ use nom::{
     bytes::complete::{escaped, tag, take_while, take_while1, is_a},
     character::complete::{alphanumeric1 as alphanumeric, char, one_of},
     combinator::{map, map_res, opt, cut, iterator},
-    multi::separated_list,
     number::complete::double,
     sequence::{delimited, preceded, separated_pair, terminated, pair},
     Err, IResult, HexDisplay,

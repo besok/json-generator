@@ -4,8 +4,8 @@ use nom::{
     bytes::complete::{escaped, tag, take_while, take_while1, is_a},
     character::complete::{alphanumeric1 as alphanumeric, char, one_of},
     combinator::{map, map_res, opt, cut, iterator},
-    multi::separated_list,
     number::complete::double,
+    multi::separated_list0,
     sequence::{delimited, preceded, separated_pair, terminated, pair},
     Err, IResult, HexDisplay,
 };
@@ -17,7 +17,6 @@ use std::num::ParseIntError;
 use nom::bytes::complete::is_not;
 use std::str::FromStr;
 use nom::error::{ErrorKind, ParseError};
-
 
 fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     let chars = " \t\r\n";
@@ -40,12 +39,12 @@ fn str_to_int(i: &str) -> IResult<&str, i64> {
             })(i)
 }
 
-pub fn elem(v: &str) -> IResult<&str, &str> {
+pub fn plain_string(v: &str) -> IResult<&str, &str> {
     preceded(sp, take_while(move |c| c != ')' && c != ','))(v)
 }
 
-fn func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
-    where F: Fn(&'a str) -> IResult<&'a str, Generator> {
+fn func<'a, F>(label: &'a str, extractor: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
+    where F: FnMut(&'a str) -> IResult<&'a str, Generator> {
     preceded(sp, preceded(
         tag(label),
         preceded(
@@ -63,14 +62,21 @@ fn func<'a, F>(label: &'a str, extractor: F) -> impl Fn(&'a str) -> IResult<&'a 
     ))
 }
 
-fn args<'a, F>(transformer: F) -> impl Fn(&'a str) -> IResult<&'a str, Generator>
-    where F: Fn(Vec<&str>) -> Result<Generator, GenError> {
-    map_res(separated_list(char(','), elem), transformer)
+fn args_string<'a, F>(transformer: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
+    where F: Fn(Vec<&'a str>) -> Result<Generator, GenError> {
+    args(transformer, plain_string)
+}
+
+fn args<'a, F, T, S>(transformer: F, elem_transformer: S) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
+    where
+        F: Fn(Vec<T>) -> Result<Generator, GenError>,
+        S: Fn(&'a str) -> IResult<&'a str, T> {
+    map_res(separated_list0(char(','), elem_transformer), transformer)
 }
 
 fn current_dt(i: &str) -> IResult<&str, Generator> {
     func("dt",
-         args(|elems| {
+         args_string(|elems| {
              let format =
                  elems.get(0)
                      .filter(|e| !e.is_empty())
@@ -81,12 +87,12 @@ fn current_dt(i: &str) -> IResult<&str, Generator> {
 }
 
 fn uuid(i: &str) -> IResult<&str, Generator> {
-    func("uuid", args(|_| { new(UUID {}) }))(i)
+    func("uuid", args_string(|_| { new(UUID {}) }))(i)
 }
 
 
 fn sequence(i: &str) -> IResult<&str, Generator> {
-    func("seq", args(|elems| {
+    func("seq", args_string(|elems| {
         new({
             let val = if let Some(Ok(new_val)) = elems.get(0).map(|e| e.parse()) {
                 new_val
@@ -104,7 +110,7 @@ fn sequence(i: &str) -> IResult<&str, Generator> {
 }
 
 fn random_string(i: &str) -> IResult<&str, Generator> {
-    func("str", args(|elems| {
+    func("str", args_string(|elems| {
         new({
             let n = if let Some(Ok(new_n)) = elems.get(0).map(|e| e.parse()) {
                 new_n
@@ -123,23 +129,21 @@ fn random_string(i: &str) -> IResult<&str, Generator> {
 
             RandomString::new_with(n, prefix, suffix)
         })
-    }),
-    )(i)
+    }))(i)
 }
 
 fn random_int(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("random_int("),
-             terminated(
-                 map_res(separated_list(preceded(sp, char(',')), str_to_int),
-                         |v: Vec<i64>| {
-                             match v[..] {
-                                 [s, f] => new(RandomInt::new(s, f)),
-                                 _ => Err(GenError::new())
-                             }
-                         }),
-                 preceded(sp, preceded(char(')'), sp)),
-             ),
-    )(i)
+    fn get_or_def(elems: &Vec<&str>, idx: usize, def: i32) -> i32 {
+        if let Some(Ok(v)) = elems.get(idx).map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) { v } else { def }
+    }
+
+    func("int", args_string(|elems| {
+        new({
+            let lower = get_or_def(&elems, 0, 0);
+            let upper = get_or_def(&elems, 1, 1000);
+            RandomInt::new(lower, upper)
+        })
+    }))(i)
 }
 
 
@@ -385,6 +389,42 @@ mod tests {
             }));
     }
 
+    #[test]
+    fn random_int_test() {
+
+        if_let!(generator("int(0,10)") => Ok((_, g)) => {
+             for _ in (0..1000).into_iter() {
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n >-1 && n < 11 )
+               }
+        });
+
+        if_let!(generator("int(-10,11)") => Ok((_, g)) => {
+            for _ in (0..1000).into_iter() {
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n > -11 && n < 11 )
+               }
+        });
+        if_let!(generator("int(-10)") => Ok((_, g)) => {
+            for _ in (0..1000).into_iter() {
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n > -11 && n < 1000 )
+               }
+        });
+        if_let!(generator("int()") => Ok((_, g)) => {
+            for _ in (0..1000).into_iter() {
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n > -1 && n < 1000 )
+               }
+        });
+        if_let!(generator("int(,10)") => Ok((_, g)) => {
+            for _ in (0..1000).into_iter() {
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n > -1 && n < 10 )
+               }
+        });
+    }
+
     // #[test]
     // fn random_int_array_test() {
     //     if_let!(
@@ -393,14 +433,6 @@ mod tests {
     //             => if_let!(v[..] => [Json::Num(e1), Json::Num(e2), Json::Num(e3)]
     //                 => assert_eq!(e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true)))
     //                 );
-    // }
-    //
-    //
-    //
-    // #[test]
-    // fn random_int_test() {
-    //     if_let!(random_int("random_int(10,20)")=> Ok((_, g))
-    //             => if_let!(g.next() => Json::Num(el) => assert_eq!(el > 9 && el < 20, true)));
     // }
     //
     // #[test]

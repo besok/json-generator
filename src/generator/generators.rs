@@ -46,13 +46,13 @@ impl GeneratorFunc for Sequence {
 }
 
 pub struct RandomInt {
-    start: i64,
-    end: i64,
+    start: i32,
+    end: i32,
     rng: ThreadRng,
 }
 
 impl RandomInt {
-    pub fn new(start: i64, end: i64) -> Self {
+    pub fn new(start: i32, end: i32) -> Self {
         RandomInt { start, end, rng: rand::thread_rng() }
     }
 }
