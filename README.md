@@ -15,9 +15,9 @@ The function can be added to json file above the proper field with /* */ distinc
 #### List of generators:
 | Generator | Arguments | Description | Example |
 |----------------------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| sequence | starting point | the sequentially-increase row of numbers (1,2,3,4 ...) | sequence(10)  |
-| random_str | size of row | the row composed of random letters and numbers, predefined length | random_str(10) |
-| random_int | low bound and high bound | the random number lying in predefined bounds | random_int(1,100) |
+| seq | starting point | the sequentially-increase row of numbers (1,2,3,4 ...) | sequence(10)  |
+| str | size of row | the row composed of random letters and numbers, predefined length | random_str(10) |
+| int | low bound and high bound | the random number lying in predefined bounds | random_int(1,100) |
 | random_str_from_file | path to file, delimiter(optional) | the list of string pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used | random_str_from_file(\home\user\json) random_str_from_file(\home\user\json,;) random_str_from_file(\home\user\json,\n) |
 | random_int_from_file | path to file, delimiter(optional)  | list of numbers pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used  | random_int_from_file(c:\\user\json)  |
 | random_str_from_list | list of values | the list of string | random_str_from_list(a,b,c,d) |

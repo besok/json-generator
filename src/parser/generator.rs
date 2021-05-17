@@ -147,43 +147,25 @@ fn random_int(i: &str) -> IResult<&str, Generator> {
 }
 
 
-// fn random_str_from_list(i: &str) -> IResult<&str, Generator> {
-//     random_from_list(i, "random_str_from_list(", |s| String::from(s))
-// }
-//
-// fn random_int_from_list(i: &str) -> IResult<&str, Generator> {
-//     random_from_list(i, "random_int_from_list(", |s| {
-//         let result: Result<i64, ParseIntError> = s.trim().parse();
-//         match result {
-//             Ok(e) => e,
-//             Result::Err(e) => panic!(" can no possible to parse the list of values: {}", e.to_string()),
-//         }
-//     })
-// }
-//
-// fn random_from_list<'a, T: 'static + Into<Json> + Clone, F: Fn(&str) -> T>(i: &'a str, label: &str, mp: F) -> IResult<&'a str, Generator> {
-//     preceded(tag(label),
-//              terminated(
-//                  map_res(separated_list(preceded(sp, char(',')),
-//                                         |s| {
-//                                             map_res(take_while(|c| c != ')' && c != ','),
-//                                                     |n: &str| {
-//                                                         let res: Result<&str, GenError> = Ok(n);
-//                                                         res
-//                                                     })(s)
-//                                         },
-//                  ),
-//                          |v: Vec<&str>| {
-//                              if v.is_empty() {
-//                                  Err(GenError::new())
-//                              } else {
-//                                  new(RandomFromList::new(v.into_iter().map(|s| mp(s)).collect()))
-//                              }
-//                          }),
-//                  preceded(sp, char(')')),
-//              ),
-//     )(i)
-// }
+fn random_str_from_list(i: &str) -> IResult<&str, Generator> {
+    func("str_from_list",
+         args_string(|elems| {
+             let values =
+                 elems
+                     .into_iter()
+                     .map(|e| e.trim())
+                     .map(String::from)
+                     .collect();
+             new(RandomFromList::new(values))
+         }))(i)
+}
+
+fn random_int_from_list(i: &str) -> IResult<&str, Generator> {
+    func("int_from_list",
+         args(|elems| {
+             new(RandomFromList::new(elems))
+         }, str_to_int))(i)
+}
 
 fn random_array(i: &str) -> IResult<&str, Generator> {
     preceded(tag("array("),
@@ -264,8 +246,8 @@ pub fn generator(i: &str) -> IResult<&str, Generator> {
                  current_dt,
                  // random_str_from_file,
                  // random_int_from_file,
-                 // random_str_from_list,
-                 // random_int_from_list,
+                 random_str_from_list,
+                 random_int_from_list,
                  random_array
              )))(i)
 }
@@ -382,7 +364,6 @@ mod tests {
 
     #[test]
     fn random_int_test() {
-
         if_let!(generator("int(0,10)") => Ok((_, g)) => {
              for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
@@ -416,6 +397,38 @@ mod tests {
         });
     }
 
+    #[test]
+    fn random_str_from_list_test() {
+        if_let!(generator(r#"str_from_list(a,b,c,d)"#) => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                => assert_eq!("abcd".contains(el.as_str()), true)));
+
+        if_let!(generator(r#"str_from_list(,,,)"#) => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                => assert_eq!("".contains(el.as_str()), true)));
+        if_let!(generator(r#"str_from_list(abc , bca , cdb)"#) => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                => assert_eq!("abcbcacdb".contains(el.as_str()), true)));
+        if_let!(generator(r#"str_from_list( )"#) => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                => assert_eq!(el,"")));
+    }
+
+    #[test]
+    fn random_int_from_list_test() {
+        if_let!(generator(r#"int_from_list(1,2,3)"#) => Ok((_, g))
+                => {
+                let n = g.next().as_i64().unwrap();
+                assert!(vec![1,2,3].contains(&n));
+                });
+        if_let!(generator(r#"int_from_list()"#) => Ok((_, g)) => assert_eq!(g.next(),Value::Null));
+        if_let!(generator(r#"int_from_list(a,b,c)"#) => Err(e)
+                => {
+                assert!(e.to_string().contains("int_from_list(a,b,c)"));
+                })
+    }
+
+
     // #[test]
     // fn random_int_array_test() {
     //     if_let!(
@@ -424,20 +437,6 @@ mod tests {
     //             => if_let!(v[..] => [Json::Num(e1), Json::Num(e2), Json::Num(e3)]
     //                 => assert_eq!(e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true)))
     //                 );
-    // }
-    //
-    // #[test]
-    // fn random_str_from_list_test() {
-    //     if_let!(random_str_from_list(r#"random_str_from_list(a,b,c,d)"#) => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!("abcd".contains(el.as_str()), true)));
-    // }
-    //
-    // #[test]
-    // fn random_int_from_list_test() {
-    //     if_let!(random_int_from_list(r#"random_int_from_list(1,2,3)"#) => Ok((_, g))
-    //             => if_let!(g.next() => Json::Num(el)
-    //                 => assert_eq!(el > 0 && el < 4, true)));
     // }
     //
     // #[test]
