@@ -1,6 +1,7 @@
 //! ### Generators
 //! The functions which are responsible to generate new json values
 pub mod generators;
+pub mod from_string;
 
 use std::fmt::{Debug, Formatter, Error};
 use std::collections::HashMap;

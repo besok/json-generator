@@ -11,12 +11,13 @@ use nom::{
 };
 use crate::generator::{GeneratorFunc, Generator};
 use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt, RandomFromFile, RandomFromList, RandomArray};
+use crate::generator::from_string::FromStringTo;
 use std::error::Error;
 use std::fmt::{Display, Formatter, Debug};
 use std::num::ParseIntError;
 use nom::bytes::complete::is_not;
-use std::str::FromStr;
 use nom::error::{ErrorKind, ParseError};
+
 
 fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     let chars = " \t\r\n";
@@ -134,7 +135,10 @@ fn random_string(i: &str) -> IResult<&str, Generator> {
 
 fn random_int(i: &str) -> IResult<&str, Generator> {
     fn get_or_def(elems: &Vec<&str>, idx: usize, def: i32) -> i32 {
-        if let Some(Ok(v)) = elems.get(idx).map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) { v } else { def }
+        if let Some(Ok(v)) =
+        elems.get(idx).map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) {
+            v
+        } else { def }
     }
 
     func("int", args_string(|elems| {
@@ -168,73 +172,41 @@ fn random_int_from_list(i: &str) -> IResult<&str, Generator> {
 }
 
 fn random_array(i: &str) -> IResult<&str, Generator> {
-    preceded(tag("array("),
-             terminated(map_res(separated_pair(
-                 preceded(sp,
-                          |s| {
-                              map_res(take_while1(char::is_numeric),
-                                      |s: &str| {
-                                          let res: Result<&str, GenError> = Ok(s);
-                                          res
-                                      })(s)
-                          }),
-                 cut(preceded(sp, char(','))),
-                 |s| {
-                     map_res(take_while1(|c| c != ')'),
-                             |s: &str| {
-                                 let res: Result<&str, GenError> = Ok(s);
-                                 res
-                             })(s)
-                 }),
-                                |v: (&str, &str)| {
-                                    match v {
-                                        (s, f) =>
-                                            match generator(format!("{})", f).as_str()) {
-                                                Ok((r, g)) =>
-                                                    new(RandomArray::new(s.parse().unwrap(), g)),
-                                                Result::Err(err) => Err(GenError::new())
-                                            }
-                                    }
-                                }),
-                        preceded(sp, char(')')),
-             ),
-    )(i)
+    func("array", args_string(|elems| {
+        match elems[..] {
+            [f, it] => new(RandomArray::new(FromStringTo::parse(it, true)?, generator(f)?.1)),
+            [f] => new(RandomArray::new(1, generator(f)?.1)),
+            _ => Err(GenError::new())
+        }
+    }))(i)
 }
-//
-// fn random_from_file<'a, T: 'static + FromStr + Clone + Into<Json>>(i: &'a str, label: &str) -> IResult<&'a str, Generator>
-//     where <T as FromStr>::Err: Debug {
-//     preceded(tag(label),
-//              terminated(
-//                  map_res(separated_list(preceded(sp, char(',')),
-//                                         |s| {
-//                                             map_res(take_while(|c| c != ')' && c != ','),
-//                                                     |n: &str| {
-//                                                         let res: Result<&str, GenError> = Ok(n);
-//                                                         res
-//                                                     })(s)
-//                                         },
-//                  ),
-//                          |v: Vec<&str>| {
-//                              match v[..] {
-//                                  [p] => new_if_ok(RandomFromFile::<T>::new(p, ",")),
-//                                  [p, d] => {
-//                                      new_if_ok(RandomFromFile::<T>::new(p, d))
-//                                  }
-//                                  _ => Err(GenError::new())
-//                              }
-//                          }),
-//                  preceded(sp, char(')')),
-//              ),
-//     )(i)
-// }
-//
-// fn random_str_from_file(i: &str) -> IResult<&str, Generator> {
-//     random_from_file::<String>(i, "random_str_from_file(")
-// }
-//
-// fn random_int_from_file(i: &str) -> IResult<&str, Generator> {
-//     random_from_file::<i64>(i, "random_int_from_file(")
-// }
+
+fn random_str_from_file(i: &str) -> IResult<&str, Generator> {
+    func("str_from_file",
+         args_string(|elems| {
+             match elems[..] {
+                 [path, d1, d2] if d1 == "" && d2 == "" =>
+                     new(RandomFromFile::<String>::new(path, ",")?),
+                 [path, d] =>
+                     new(RandomFromFile::<String>::new(path, d)?),
+                 _ => Err(GenError::new())
+             }
+         }))(i)
+}
+
+fn random_int_from_file(i: &str) -> IResult<&str, Generator> {
+    func("int_from_file",
+         args_string(|elems| {
+             match elems[..] {
+                 [path, d1, d2] if d1 == "" && d2 == "" =>
+                     new(RandomFromFile::<i64>::new(path, ",")?),
+                 [path, d] =>
+                     new(RandomFromFile::<i64>::new(path, d)?),
+                 _ => Err(GenError::new())
+             }
+         }))(i)
+}
+
 
 pub fn generator(i: &str) -> IResult<&str, Generator> {
     preceded(sp,
@@ -244,8 +216,8 @@ pub fn generator(i: &str) -> IResult<&str, Generator> {
                  random_string,
                  random_int,
                  current_dt,
-                 // random_str_from_file,
-                 // random_int_from_file,
+                 random_str_from_file,
+                 random_int_from_file,
                  random_str_from_list,
                  random_int_from_list,
                  random_array
@@ -272,6 +244,24 @@ impl GenError {
 
 impl Error for GenError {}
 
+impl From<std::io::Error> for GenError {
+    fn from(e: std::io::Error) -> Self {
+        GenError::new_with(e.to_string())
+    }
+}
+
+impl From<std::string::String> for GenError {
+    fn from(e: std::string::String) -> Self {
+        GenError::new_with(e)
+    }
+}
+
+impl From<nom::Err<nom::error::Error<&str>>> for GenError {
+    fn from(e: nom::Err<nom::error::Error<&str>>) -> Self {
+        GenError::new_with(e.to_string())
+    }
+}
+
 impl Display for GenError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "error while parsing a generator func, reason: {}", self.reason)
@@ -281,8 +271,7 @@ impl Display for GenError {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{uuid, generator, current_dt, random_string, random_int,
-                                   random_array};
+    use crate::parser::generator::{uuid, generator, current_dt, random_string, random_int, random_array, GenError};
     use nom::error::ErrorKind;
     use crate::generator::Generator;
     use serde_json::Value;
@@ -428,44 +417,52 @@ mod tests {
                 })
     }
 
+    #[test]
+    fn random_str_from_file_test() {
+        if_let!(generator(r#"str_from_file(jsons/cities, \n)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                    => assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
+                                   .contains(el.as_str()), true)));
+        if_let!(generator(r#"str_from_file(jsons/numbers,,)"#)
+                => Ok((_, g))
+                => if_let!(g.next() => Value::String(el)
+                    => assert_eq!("123456789"
+                                   .contains(el.as_str()), true)));
 
-    // #[test]
-    // fn random_int_array_test() {
-    //     if_let!(
-    //     random_array("array(3,random_int_from_list(1,2,3,4))") =>  Ok((_, el))
-    //         => if_let!(el.next() => Json::Array(v)
-    //             => if_let!(v[..] => [Json::Num(e1), Json::Num(e2), Json::Num(e3)]
-    //                 => assert_eq!(e1 > 0 && e1 < 5 && e2 > 0 && e2 < 5 && e3 > 0 && e3 < 5, true)))
-    //                 );
-    // }
-    //
-    // #[test]
-    // fn random_str_from_file_nl_test() {
-    //     if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\cities, \r\n)"#)
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
-    //                                .contains(el.as_str()), true)));
-    // }
-    //
-    // #[test]
-    // fn random_str_from_file_test() {
-    //     if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt,;)"#)
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!(el, "1,2,3,4,5,6".to_string())));
-    //
-    //     if_let!(random_str_from_file(r#"random_str_from_file(C:\projects\json-generator\jsons\list.txt)"#)
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Str(el)
-    //                 => assert_eq!("1,2,3,4,5,6".contains(el.as_str()), true)));
-    // }
-    //
-    // #[test]
-    // fn random_int_from_file_test() {
-    //     if_let!(random_int_from_file(r#"random_int_from_file(C:\projects\json-generator\jsons\list.txt)"#)
-    //             => Ok((_, g))
-    //             => if_let!(g.next() => Json::Num(el)
-    //                 => assert_eq!(el > 0 && el < 7, true)));
-    // }
+        if_let!(generator(r#"str_from_file()"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
+        if_let!(generator(r#"str_from_file(f,)"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
+    }
+
+    #[test]
+    fn random_int_from_file_test() {
+        if_let!(generator(r#"int_from_file(jsons/numbers_negate,,)"#)
+                => Ok((_, g))
+                => {
+                for _ in (1..100).into_iter(){
+                 let n = g.next().as_i64().unwrap();
+                 assert!(n > -4 && n < 4)
+                }
+                });
+
+        if_let!(generator(r#"int_from_file(jsons/numbers,,)"#)
+                => Ok((_, g))
+                => {
+                let n = g.next().as_i64().unwrap();
+                assert!(n > 0 && n < 10)
+                });
+        if_let!(generator(r#"int_from_file(jsons/cities, \n)"#)
+                => Err(e)
+                => assert!(e.to_string().contains("int_from_file")));
+        if_let!(generator(r#"int_from_file()"#) => Err(el) => assert!(el.to_string().contains("int_from_file")));
+    }
+
+    #[test]
+    fn random_array_test() {
+        if_let!(
+        generator("array(int_from_list(1,2,3,4),3)") =>  Ok((_, el))
+            => if_let!(el.next() => Value::Array(elems) => {
+            println!("{:?}",elems)
+            }));
+    }
 }

@@ -15,6 +15,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use serde_json::Value;
 use std::iter::FromIterator;
+use crate::parser::generator::GenError;
+use crate::generator::from_string::FromStringTo;
 
 pub struct Null {}
 
@@ -144,17 +146,15 @@ impl<T> GeneratorFunc for RandomFromList<T>
 
 //todo in general with small files, having them in the memory is fine but if it is going to be a pitfall,
 // better to keep a path and read the file randomly.
-pub struct RandomFromFile<T: FromStr + Clone + Into<Value>>
-    where <T as FromStr>::Err: Debug {
+pub struct RandomFromFile<T: FromStringTo + Clone + Into<Value>> {
     path: String,
     delim: String,
     delegate: RandomFromList<T>,
 }
 
-impl<T: FromStr + Clone + Into<Value>> RandomFromFile<T>
-    where <T as FromStr>::Err: Debug {
-    pub fn new(path: &str, delim: &str) -> Result<Self, Error> {
-        let values = process_string(read_file_into_string(path)?, delim);
+impl<T: FromStringTo + Clone + Into<Value>> RandomFromFile<T> {
+    pub fn new(path: &str, delim: &str) -> Result<Self, GenError> {
+        let values = process_string(read_file_into_string(path)?, delim)?;
         let rng = Default::default();
         Ok(
             RandomFromFile {
@@ -166,15 +166,13 @@ impl<T: FromStr + Clone + Into<Value>> RandomFromFile<T>
     }
 }
 
-impl<T: Clone + FromStr + Into<Value>> GeneratorFunc for RandomFromFile<T>
-    where <T as FromStr>::Err: Debug {
+impl<T: Clone + FromStringTo + Into<Value>> GeneratorFunc for RandomFromFile<T> {
     fn next_value(&mut self) -> Value {
         self.delegate.next_value()
     }
 }
 
-fn process_string<T: FromStr>(v: String, d: &str) -> Vec<T>
-    where <T as FromStr>::Err: Debug {
+fn process_string<T: FromStringTo>(v: String, d: &str) -> Result<Vec<T>, GenError> {
     let mut del = match d.trim() {
         r#"\r\n"# => "\r\n",
         r#"\n"# => "\n",
@@ -182,12 +180,15 @@ fn process_string<T: FromStr>(v: String, d: &str) -> Vec<T>
         r#"\n\r"# => "\n\r",
         _ => d
     };
+    let mut res: Vec<T> = vec![];
 
-    v.split(del)
-        .map(FromStr::from_str)
-        .filter(Result::is_ok)
-        .map(Result::unwrap)
-        .collect()
+    let trim_spaces = del != " ";
+
+    for el in v.split(del).into_iter() {
+        let v = FromStringTo::parse(el, trim_spaces).map_err(|e| GenError::new_with(e))?;
+        res.push(v);
+    }
+    Ok(res)
 }
 
 pub fn read_file_into_string(path: &str) -> Result<String, Error> {
@@ -223,6 +224,7 @@ mod tests {
     use std::io::Error;
     use serde_json::Value;
     use std::env;
+    use crate::parser::generator::GenError;
 
     fn gen<T: GeneratorFunc + 'static>(f: T) -> Generator {
         Generator::new(f)
@@ -326,14 +328,25 @@ mod tests {
 
     #[test]
     fn from_string_test() {
-        let vec = process_string::<String>("a,b,c".to_string(), ",");
+        let vec = process_string::<String>("a,b,c".to_string(), ",").unwrap();
         assert_eq!(vec, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
 
-        let vec = process_string::<i32>("1,2,3".to_string(), ",");
+        let vec = process_string::<i32>("1,2,3".to_string(), ",").unwrap();
         assert_eq!(vec, vec![1, 2, 3]);
 
-        let vec = process_string::<i32>("1,c,3".to_string(), ",");
-        assert_eq!(vec, vec![1, 3]);
+        let err = process_string::<i32>("1,c,3".to_string(), ",");
+        assert_eq!(err.err().unwrap().to_string(), "error while parsing a generator func, reason: invalid digit found in string");
+
+        let vec = process_string::<i64>("-1,-2,-3".to_string(), ",").unwrap();
+        assert_eq!(vec, vec![-1, -2, -3]);
+
+        let vec = process_string::<i64>(" -1 , -2 , -3 ".to_string(), ",").unwrap();
+        assert_eq!(vec, vec![-1, -2, -3]);
+        let vec = process_string::<i64>(" - 1  , - 2 , - 3 ".to_string(), ",").unwrap();
+        assert_eq!(vec, vec![-1, -2, -3]);
+
+        let vec = process_string::<i64>("-1 -2 -3".to_string(), " ").unwrap();
+        assert_eq!(vec, vec![-1, -2, -3]);
     }
 
     #[test]
