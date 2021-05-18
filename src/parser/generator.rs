@@ -17,6 +17,7 @@ use std::fmt::{Display, Formatter, Debug};
 use std::num::ParseIntError;
 use nom::bytes::complete::is_not;
 use nom::error::{ErrorKind, ParseError};
+use nom::character::complete::satisfy;
 
 
 fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -40,22 +41,46 @@ fn str_to_int(i: &str) -> IResult<&str, i64> {
             })(i)
 }
 
-pub fn plain_string(v: &str) -> IResult<&str, &str> {
+fn escaped_string(v: &str) -> IResult<&str, &str> {
+    terminated(preceded(sp,
+             preceded(
+                 char('\''),
+                 escaped(
+                     take_while1(move |c| c != '\'' && c != '\\'), '\\', one_of("'")),
+             ),
+    ),char('\''))(v)
+        .map(|e| {
+            println!("{} -> {:?}", v, e);
+            e
+        })
+}
+
+fn string(v: &str) -> IResult<&str, &str> {
     preceded(sp, take_while(move |c| c != ')' && c != ','))(v)
 }
 
+
+pub fn plain_string(v: &str) -> IResult<&str, &str> {
+    alt((escaped_string, string))(v)
+}
+
 fn func<'a, F>(label: &'a str, extractor: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
+    where F: FnMut(&'a str) -> IResult<&'a str, Generator> {
+    func_with_br(label, '(', ')', extractor)
+}
+
+fn func_with_br<'a, F>(label: &'a str, br_l: char, br_r: char, extractor: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
     where F: FnMut(&'a str) -> IResult<&'a str, Generator> {
     preceded(sp, preceded(
         tag(label),
         preceded(
             sp,
             preceded(
-                char('('),
+                char(br_l),
                 terminated(
                     extractor,
                     preceded(
-                        sp, char(')'),
+                        sp, char(br_r),
                     ),
                 ),
             ),
@@ -172,7 +197,7 @@ fn random_int_from_list(i: &str) -> IResult<&str, Generator> {
 }
 
 fn random_array(i: &str) -> IResult<&str, Generator> {
-    func("array", args_string(|elems| {
+    func("array",  args_string(|elems| {
         match elems[..] {
             [f, it] => new(RandomArray::new(FromStringTo::parse(it, true)?, generator(f)?.1)),
             [f] => new(RandomArray::new(1, generator(f)?.1)),
@@ -460,7 +485,7 @@ mod tests {
     #[test]
     fn random_array_test() {
         if_let!(
-        generator("array(int_from_list(1,2,3,4),3)") =>  Ok((_, el))
+        generator(r#"array('int_from_list(1,2,3,4)',3)"#) =>  Ok((_, el))
             => if_let!(el.next() => Value::Array(elems) => {
             println!("{:?}",elems)
             }));
