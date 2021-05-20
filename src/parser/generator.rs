@@ -10,7 +10,7 @@ use nom::{
     Err, IResult, HexDisplay,
 };
 use crate::generator::{GeneratorFunc, Generator};
-use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt, RandomFromFile, RandomFromList, RandomArray};
+use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt, RandomFromFile, RandomFromList, RandomArray, RandomBool, Null};
 use crate::generator::from_string::FromStringTo;
 use std::error::Error;
 use std::fmt::{Display, Formatter, Debug};
@@ -18,87 +18,10 @@ use std::num::ParseIntError;
 use nom::bytes::complete::is_not;
 use nom::error::{ErrorKind, ParseError};
 use nom::character::complete::satisfy;
-
-
-fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    let chars = " \t\r\n";
-    take_while(move |c| chars.contains(c))(i)
-}
-
-fn end_br(c: char) -> bool {
-    c != ')'
-}
-
-fn is_numeric_with_neg(c: char) -> bool {
-    char::is_numeric(c) || c == '-'
-}
-
-fn str_to_int(i: &str) -> IResult<&str, i64> {
-    map_res(take_while1(is_numeric_with_neg),
-            |s: &str| {
-                let res: Result<i64, ParseIntError> = s.parse();
-                res
-            })(i)
-}
-
-fn escaped_string(v: &str) -> IResult<&str, &str> {
-    terminated(preceded(sp,
-             preceded(
-                 char('\''),
-                 escaped(
-                     take_while1(move |c| c != '\'' && c != '\\'), '\\', one_of("'")),
-             ),
-    ),char('\''))(v)
-        .map(|e| {
-            println!("{} -> {:?}", v, e);
-            e
-        })
-}
-
-fn string(v: &str) -> IResult<&str, &str> {
-    preceded(sp, take_while(move |c| c != ')' && c != ','))(v)
-}
-
-
-pub fn plain_string(v: &str) -> IResult<&str, &str> {
-    alt((escaped_string, string))(v)
-}
-
-fn func<'a, F>(label: &'a str, extractor: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
-    where F: FnMut(&'a str) -> IResult<&'a str, Generator> {
-    func_with_br(label, '(', ')', extractor)
-}
-
-fn func_with_br<'a, F>(label: &'a str, br_l: char, br_r: char, extractor: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
-    where F: FnMut(&'a str) -> IResult<&'a str, Generator> {
-    preceded(sp, preceded(
-        tag(label),
-        preceded(
-            sp,
-            preceded(
-                char(br_l),
-                terminated(
-                    extractor,
-                    preceded(
-                        sp, char(br_r),
-                    ),
-                ),
-            ),
-        ),
-    ))
-}
-
-fn args_string<'a, F>(transformer: F) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
-    where F: Fn(Vec<&'a str>) -> Result<Generator, GenError> {
-    args(transformer, plain_string)
-}
-
-fn args<'a, F, T, S>(transformer: F, elem_transformer: S) -> impl FnMut(&'a str) -> IResult<&'a str, Generator>
-    where
-        F: Fn(Vec<T>) -> Result<Generator, GenError>,
-        S: Fn(&'a str) -> IResult<&'a str, T> {
-    map_res(separated_list0(char(','), elem_transformer), transformer)
-}
+use crate::parser::{func, args_string, args, str_to_int, sp, func_with_br, GenError};
+use uuid::Version::Random;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 fn current_dt(i: &str) -> IResult<&str, Generator> {
     func("dt",
@@ -114,6 +37,10 @@ fn current_dt(i: &str) -> IResult<&str, Generator> {
 
 fn uuid(i: &str) -> IResult<&str, Generator> {
     func("uuid", args_string(|_| { new(UUID {}) }))(i)
+}
+
+fn bool(i: &str) -> IResult<&str, Generator> {
+    func("bool", args_string(|_| { new(RandomBool::new()) }))(i)
 }
 
 
@@ -196,14 +123,11 @@ fn random_int_from_list(i: &str) -> IResult<&str, Generator> {
          }, str_to_int))(i)
 }
 
-fn random_array(i: &str) -> IResult<&str, Generator> {
-    func("array",  args_string(|elems| {
-        match elems[..] {
-            [f, it] => new(RandomArray::new(FromStringTo::parse(it, true)?, generator(f)?.1)),
-            [f] => new(RandomArray::new(1, generator(f)?.1)),
-            _ => Err(GenError::new())
-        }
-    }))(i)
+fn random_array_empty(i: &str) -> IResult<&str, Generator> {
+    func("array", args(|elems| {
+        let len = if let Some(idx) = elems.get(0) { *idx as usize } else { 1 as usize };
+        new(RandomArray::new_size(len))
+    }, str_to_int))(i)
 }
 
 fn random_str_from_file(i: &str) -> IResult<&str, Generator> {
@@ -233,88 +157,73 @@ fn random_int_from_file(i: &str) -> IResult<&str, Generator> {
 }
 
 
-pub fn generator(i: &str) -> IResult<&str, Generator> {
-    preceded(sp,
-             alt((
-                 sequence,
-                 uuid,
-                 random_string,
-                 random_int,
-                 current_dt,
-                 random_str_from_file,
-                 random_int_from_file,
-                 random_str_from_list,
-                 random_int_from_list,
-                 random_array
-             )))(i)
+pub fn generator(i: &str) -> Result<Generator, GenError> {
+    map_res(preceded(sp, separated_list0(tag("->"), atomic_generator)),
+            |gens| {
+                let mut res: Result<Generator, GenError> =
+                    gens
+                        .get(0)
+                        .map(|g| g.clone())
+                        .ok_or(GenError::new());
+
+                for el in gens.iter().skip(1) {
+                    res = res.and_then(|g| el.merge(&g))
+                }
+                res
+            },
+    )(i)
+        .map(|e| e.1)
+        .map_err(|e| GenError::new_with(e.to_string()))
+}
+
+pub fn atomic_generator(i: &str) -> IResult<&str, Generator> {
+    terminated(
+        preceded(
+            sp,
+            alt((
+                sequence,
+                uuid,
+                random_string,
+                random_int,
+                current_dt,
+                random_str_from_file,
+                random_int_from_file,
+                random_str_from_list,
+                random_int_from_list,
+                random_array_empty,
+                bool
+            ))), sp)(i)
 }
 
 fn new<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
     Ok(Generator::new(gf))
 }
 
-#[derive(Debug)]
-pub struct GenError {
-    reason: String
-}
-
-impl GenError {
-    pub fn new() -> Self {
-        GenError { reason: "generator error".to_string() }
-    }
-    pub fn new_with(reason: String) -> Self {
-        GenError { reason }
-    }
-}
-
-impl Error for GenError {}
-
-impl From<std::io::Error> for GenError {
-    fn from(e: std::io::Error) -> Self {
-        GenError::new_with(e.to_string())
-    }
-}
-
-impl From<std::string::String> for GenError {
-    fn from(e: std::string::String) -> Self {
-        GenError::new_with(e)
-    }
-}
-
-impl From<nom::Err<nom::error::Error<&str>>> for GenError {
-    fn from(e: nom::Err<nom::error::Error<&str>>) -> Self {
-        GenError::new_with(e.to_string())
-    }
-}
-
-impl Display for GenError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "error while parsing a generator func, reason: {}", self.reason)
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{uuid, generator, current_dt, random_string, random_int, random_array, GenError};
-    use nom::error::ErrorKind;
+    use crate::parser::generator::{uuid, atomic_generator, generator, current_dt, random_string, random_int, GenError};
+    use nom::error::{ErrorKind, Error};
     use crate::generator::Generator;
-    use serde_json::Value;
+    use serde_json::{Value, json};
+
+    fn gen(i: &str) -> Result<Generator, GenError> {
+        generator(i)
+    }
 
     #[test]
     fn current_dt_test() {
-        if_let!(current_dt("dt()")
-                => Ok((_, g))
+        if_let!(gen("dt()")
+                => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!(19, el.len())));
 
-        if_let!(current_dt(" dt (  ) ")
-                => Ok((_, g))
+        if_let!(gen(" dt (  ) ")
+                => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!(19, el.len())));
 
-        if_let!(current_dt("dt( %Y-%m-%d )")
-                => Ok((_, g))
+        if_let!(gen("dt( %Y-%m-%d )")
+                => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                     => {
                     println!("{}",el);
@@ -324,86 +233,94 @@ mod tests {
 
     #[test]
     fn uuid_test() {
-        if_let!(uuid("uuid()") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
-        if_let!(uuid(" uuid ( ) ") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
+        if_let!(gen("uuid()") => Ok(g) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
+        if_let!(gen(" uuid ( ) ") => Ok(g) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 36)));
+    }
+
+    #[test]
+    fn bool_test() {
+        if_let!(gen("bool()") => Ok(g) => assert!(g.next().is_boolean()));
     }
 
     #[test]
     fn seq_test() {
-        if_let!(generator("seq(1)") => Ok((_, gen)) => {
-            assert_eq!(Some(2), gen.next().as_i64());
-            assert_eq!(Some(3), gen.next().as_i64());
-            assert_eq!(Some(4), gen.next().as_i64());
+        if_let!(gen("seq(1)") => Ok(g) => {
+            assert_eq!(Some(2), g.next().as_i64());
+            assert_eq!(Some(3), g.next().as_i64());
+            assert_eq!(Some(4), g.next().as_i64());
         });
 
-        if_let!(generator("seq(-1)") => Ok((_, gen)) => {
-            assert_eq!(Some(0), gen.next().as_i64());
-            assert_eq!(Some(1), gen.next().as_i64());
-            assert_eq!(Some(2), gen.next().as_i64());
+        if_let!(gen("seq(-1)") => Ok(g) => {
+            assert_eq!(Some(0), g.next().as_i64());
+            assert_eq!(Some(1), g.next().as_i64());
+            assert_eq!(Some(2), g.next().as_i64());
         });
 
-        if_let!(generator("seq(-1,-1)") => Ok((_, gen)) => {
-            assert_eq!(Some(-2), gen.next().as_i64());
-            assert_eq!(Some(-3), gen.next().as_i64());
-            assert_eq!(Some(-4), gen.next().as_i64());
+        if_let!(gen("seq(-1,-1)") => Ok(g) => {
+            assert_eq!(Some(-2), g.next().as_i64());
+            assert_eq!(Some(-3), g.next().as_i64());
+            assert_eq!(Some(-4), g.next().as_i64());
         });
-        if_let!(generator("seq(10,-10)") => Ok((_, gen)) => {
-            assert_eq!(Some(0), gen.next().as_i64());
-            assert_eq!(Some(-10), gen.next().as_i64());
-            assert_eq!(Some(-20), gen.next().as_i64());
+        if_let!(gen("seq(10,-10)") => Ok(g) => {
+            assert_eq!(Some(0), g.next().as_i64());
+            assert_eq!(Some(-10), g.next().as_i64());
+            assert_eq!(Some(-20), g.next().as_i64());
         });
     }
 
     #[test]
     fn random_string_test() {
-        if_let!(random_string("str(10)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 10)));
-        if_let!(random_string("str(abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 0)));
-        if_let!(random_string("str(10,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+        if_let!(gen("str(10)") => Ok(g) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 10)));
+        if_let!(gen("str(abc)") => Ok(g) => if_let!(g.next() => Value::String(el) => assert_eq!(el.len(), 0)));
+        if_let!(gen("str(10,abc)") => Ok(g) => if_let!(g.next() => Value::String(el) => {
             assert_eq!(el.len(), 13);
             assert!(el.starts_with("abc"));
             }));
-        if_let!(random_string("str(10,,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+        if_let!(gen("str(10,,abc)") => Ok(g) => if_let!(g.next() => Value::String(el) => {
             assert_eq!(el.len(), 13);
             assert!(el.ends_with("abc"));
             }));
-        if_let!(random_string("str(10,cba,abc)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+        if_let!(gen("str(10,cba,abc)") => Ok(g) => if_let!(g.next() => Value::String(el) => {
             assert_eq!(el.len(), 16);
             assert!(el.ends_with("abc"));
             assert!(el.starts_with("cba"));
             }));
-        if_let!(random_string("str(0,jimmy_smith,@gmail.com)") => Ok((_, g)) => if_let!(g.next() => Value::String(el) => {
+        if_let!(gen("str(0,jimmy_smith,@gmail.com)") => Ok(g) => if_let!(g.next() => Value::String(el) => {
+            assert_eq!(el, "jimmy_smith@gmail.com");
+            }));
+        if_let!(gen("str(0,'jimmy_smith',@gmail.com)") => Ok(g) => if_let!(g.next() => Value::String(el) => {
             assert_eq!(el, "jimmy_smith@gmail.com");
             }));
     }
 
     #[test]
     fn random_int_test() {
-        if_let!(generator("int(0,10)") => Ok((_, g)) => {
+        if_let!(gen("int(0,10)") => Ok(g) => {
              for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
                  assert!(n >-1 && n < 11 )
                }
         });
 
-        if_let!(generator("int(-10,11)") => Ok((_, g)) => {
+        if_let!(gen("int(-10,11)") => Ok(g) => {
             for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
                  assert!(n > -11 && n < 11 )
                }
         });
-        if_let!(generator("int(-10)") => Ok((_, g)) => {
+        if_let!(gen("int(-10)") => Ok(g) => {
             for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
                  assert!(n > -11 && n < 1000 )
                }
         });
-        if_let!(generator("int()") => Ok((_, g)) => {
+        if_let!(gen("int()") => Ok(g) => {
             for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
                  assert!(n > -1 && n < 1000 )
                }
         });
-        if_let!(generator("int(,10)") => Ok((_, g)) => {
+        if_let!(gen("int(,10)") => Ok(g) => {
             for _ in (0..1000).into_iter() {
                  let n = g.next().as_i64().unwrap();
                  assert!(n > -1 && n < 10 )
@@ -413,30 +330,30 @@ mod tests {
 
     #[test]
     fn random_str_from_list_test() {
-        if_let!(generator(r#"str_from_list(a,b,c,d)"#) => Ok((_, g))
+        if_let!(gen(r#"str_from_list(a,b,c,d)"#) => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                 => assert_eq!("abcd".contains(el.as_str()), true)));
 
-        if_let!(generator(r#"str_from_list(,,,)"#) => Ok((_, g))
+        if_let!(gen(r#"str_from_list(,,,)"#) => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                 => assert_eq!("".contains(el.as_str()), true)));
-        if_let!(generator(r#"str_from_list(abc , bca , cdb)"#) => Ok((_, g))
+        if_let!(gen(r#"str_from_list(abc , bca , cdb)"#) => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                 => assert_eq!("abcbcacdb".contains(el.as_str()), true)));
-        if_let!(generator(r#"str_from_list( )"#) => Ok((_, g))
+        if_let!(gen(r#"str_from_list( )"#) => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                 => assert_eq!(el,"")));
     }
 
     #[test]
     fn random_int_from_list_test() {
-        if_let!(generator(r#"int_from_list(1,2,3)"#) => Ok((_, g))
+        if_let!(gen(r#"int_from_list(1,2,3)"#) => Ok(g)
                 => {
                 let n = g.next().as_i64().unwrap();
                 assert!(vec![1,2,3].contains(&n));
                 });
-        if_let!(generator(r#"int_from_list()"#) => Ok((_, g)) => assert_eq!(g.next(),Value::Null));
-        if_let!(generator(r#"int_from_list(a,b,c)"#) => Err(e)
+        if_let!(gen(r#"int_from_list()"#) => Ok(g) => assert_eq!(g.next(),Value::Null));
+        if_let!(gen(r#"int_from_list(a,b,c)"#) => Err(e)
                 => {
                 assert!(e.to_string().contains("int_from_list(a,b,c)"));
                 })
@@ -444,25 +361,25 @@ mod tests {
 
     #[test]
     fn random_str_from_file_test() {
-        if_let!(generator(r#"str_from_file(jsons/cities, \n)"#)
-                => Ok((_, g))
+        if_let!(gen(r#"str_from_file(jsons/cities, \n)"#)
+                => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin"
                                    .contains(el.as_str()), true)));
-        if_let!(generator(r#"str_from_file(jsons/numbers,,)"#)
-                => Ok((_, g))
+        if_let!(gen(r#"str_from_file(jsons/numbers,,)"#)
+                => Ok(g)
                 => if_let!(g.next() => Value::String(el)
                     => assert_eq!("123456789"
                                    .contains(el.as_str()), true)));
 
-        if_let!(generator(r#"str_from_file()"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
-        if_let!(generator(r#"str_from_file(f,)"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
+        if_let!(gen(r#"str_from_file()"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
+        if_let!(gen(r#"str_from_file(f,)"#) => Err(el) => assert!(el.to_string().contains("str_from_file")));
     }
 
     #[test]
     fn random_int_from_file_test() {
-        if_let!(generator(r#"int_from_file(jsons/numbers_negate,,)"#)
-                => Ok((_, g))
+        if_let!(gen(r#"int_from_file(jsons/numbers_negate,,)"#)
+                => Ok(g)
                 => {
                 for _ in (1..100).into_iter(){
                  let n = g.next().as_i64().unwrap();
@@ -470,24 +387,67 @@ mod tests {
                 }
                 });
 
-        if_let!(generator(r#"int_from_file(jsons/numbers,,)"#)
-                => Ok((_, g))
+        if_let!(gen(r#"int_from_file(jsons/numbers,,)"#)
+                => Ok(g)
                 => {
                 let n = g.next().as_i64().unwrap();
                 assert!(n > 0 && n < 10)
                 });
-        if_let!(generator(r#"int_from_file(jsons/cities, \n)"#)
+        if_let!(gen(r#"int_from_file(jsons/cities, \n)"#)
                 => Err(e)
                 => assert!(e.to_string().contains("int_from_file")));
-        if_let!(generator(r#"int_from_file()"#) => Err(el) => assert!(el.to_string().contains("int_from_file")));
+        if_let!(gen(r#"int_from_file()"#) => Err(el) => assert!(el.to_string().contains("int_from_file")));
     }
 
     #[test]
     fn random_array_test() {
         if_let!(
-        generator(r#"array('int_from_list(1,2,3,4)',3)"#) =>  Ok((_, el))
-            => if_let!(el.next() => Value::Array(elems) => {
-            println!("{:?}",elems)
+        gen(r#"int_from_list(1,2,3,4) -> array()"#) =>  Ok(g)
+            => if_let!(g.next() => Value::Array(elems) => {
+             assert_eq!(elems.len(),1);
+             assert!(!elems.get(0).unwrap().is_null());
+            elems.iter().flat_map(|e|e.as_i64()).for_each(|e|assert!(e > 0 && e < 5))
             }));
+
+        if_let!(
+        generator(r#"int_from_list(1,2,3,4) -> array(3)"#) =>  Ok(g)
+            => if_let!(g.next() => Value::Array(elems) => {
+            assert!(!elems.get(0).unwrap().is_null());
+            assert_eq!(elems.len(),3);
+            elems
+            .iter()
+            .flat_map(|e|e.as_i64())
+            .for_each(|e|assert!(e > 0 && e < 5))
+            }));
+
+        if_let!(
+        generator(r#"str_from_list(aaa,'bbb',ccc) -> array(3)"#) =>  Ok(g)
+            => if_let!(g.next() => Value::Array(elems) => {
+            elems
+            .iter()
+            .flat_map(|e|e.as_str())
+            .for_each(|e|assert!("aaa'bbb'ccc".contains(e)))
+            }));
+
+        if_let!(
+        generator(r#"seq(1) -> array(3) -> array()"#) =>  Ok(g)
+            => if_let!(g.next() => Value::Array(elems) => {
+            assert_eq!(elems.len(),1);
+            assert!(!elems.get(0).unwrap().is_null());
+            elems
+            .iter()
+            .flat_map(|e|e.as_array())
+            .for_each(|e|{
+                assert_eq!(e.len(),3);
+                assert_eq!(e,json!([2,3,4]).as_array().unwrap());
+            })
+            }));
+
+        // if_let!(
+        // generator(r#"seq(1) -> array(3) -> array() -> seq(1)"#) => Err(GenError{reason})
+        //     => {
+        //     println!("{}",reason);
+        //     assert!(reason.contains("the functions are unable to merge in the order"))
+        //     });
     }
 }

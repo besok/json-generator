@@ -57,12 +57,6 @@ impl Sender for FolderSender {
 }
 
 
-fn current_ts() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("error with time")
-        .as_millis()
-}
 
 /// the struct which implements the Sender trait and allows
 /// to append a generated json to file

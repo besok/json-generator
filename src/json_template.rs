@@ -1,7 +1,8 @@
 use serde_json::{Value, Map};
 use crate::generator::{Generator, GeneratorFunc};
 use crate::json_template::JsonTemplate::{Plain, Array, Object, Gen};
-use crate::parser::generator::generator;
+use crate::parser::generator::{atomic_generator, generator};
+use crate::parser::GenError;
 
 #[derive(Debug)]
 pub enum JsonTemplate {
@@ -41,14 +42,12 @@ impl ToString for JsonTemplate {
     }
 }
 
-fn parse_generator(gen_str: &str) -> Result<Generator, String> {
+fn parse_generator(gen_str: &str) -> Result<Generator, GenError> {
     generator(gen_str)
-        .map(|e| e.1)
-        .map_err(|e| e.to_string())
 }
 
 impl JsonTemplate {
-    pub fn new(value: Value, indicator: &str) -> Result<Self, String> {
+    pub fn new(value: Value, indicator: &str) -> Result<Self, GenError> {
         match value {
             Value::Object(pairs) => {
                 let mut res_pairs = vec![];
@@ -57,11 +56,11 @@ impl JsonTemplate {
                         match v {
                             Value::String(gen_str) => {
                                 res_pairs.push((
-                                    k.strip_prefix(indicator).ok_or("unreachable")?.to_string(),
+                                    k.strip_prefix(indicator).ok_or(GenError::new_with("unreachable".to_string()))?.to_string(),
                                     Gen(parse_generator(gen_str)?)
                                 ))
                             }
-                            _ => return Err(format!("Error for field '{}' : a generator function should be a string.", k))
+                            _ => return Err(GenError::new_with(format!("Error for field '{}' : a generator function should be a string.", k)))
                         }
                     } else {
                         res_pairs.push((k.clone(), JsonTemplate::new(v.clone(), indicator)?))
@@ -79,7 +78,7 @@ impl JsonTemplate {
             plain => Ok(Plain(plain))
         }
     }
-    pub fn from_str(json: &str, indicator: &str) -> Result<Self, String> {
+    pub fn from_str(json: &str, indicator: &str) -> Result<Self, GenError> {
         let value = serde_json::from_str(json).map_err(|e| e.to_string())?;
         JsonTemplate::new(value, indicator)
     }

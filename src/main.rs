@@ -31,7 +31,7 @@ mod json_template;
 
 fn main() {
     let args = get_args();
-    if args.is_present("print") {
+    if args.is_present("logs") {
         SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap()
     }
 
@@ -62,6 +62,11 @@ fn get_args() -> ArgMatches {
             .long("repeat")
             .takes_value(true)
             .about("how many values needs to generate"))
+        .arg(Arg::with_name("indicator")
+            .short('i')
+            .long("indicator")
+            .takes_value(true)
+            .about("the prefix signalling the field contains a generator"))
         .arg(Arg::with_name("to-curl")
             .long("to-curl")
             .takes_value(true)
@@ -83,9 +88,8 @@ fn get_args() -> ArgMatches {
         .arg(Arg::with_name("pretty-js")
             .long("pretty")
             .about("formatting"))
-        .arg(Arg::with_name("print")
-            .short('p')
-            .long("print")
+        .arg(Arg::with_name("logs")
+            .long("logs")
             .about("print logs"))
         .get_matches()
 }
@@ -123,11 +127,11 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
 fn generate(json: &mut JsonTemplate, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
     for _ in 0..rep {
         for mut v in outputs.iter_mut() {
-            let res = if pretty {
+            let res = (if pretty {
                 v.send_pretty(json.next_value())
             } else {
                 v.send(json.next_value().to_string())
-            };
+            });
             match res {
                 Ok(res) => info!("sending json, success : {}", res),
                 Err(e) => error!("sending json, error : {}", e)
@@ -144,8 +148,9 @@ fn json(args: &ArgMatches) -> JsonTemplate {
             .expect("the input file or body containing he json template should be provided!"),
         (None, None) => panic!("the input file or body containing the json template should be provided!")
     };
+    let indicator = args.value_of("indicator").unwrap_or("|");
     info!("got the json template {}", txt);
-    match JsonTemplate::from_str(txt.as_str(), "|") {
+    match JsonTemplate::from_str(txt.as_str(), indicator) {
         Ok(t) => t,
         Err(e) => panic!("error while parsing json : {:?}", e),
     }

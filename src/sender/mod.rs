@@ -10,7 +10,6 @@ const S: &'static str = "\r\n";
 #[cfg(not(windows))]
 const S: &'static str = "\n";
 
-/// The basic trait using to send the json to a specific location related to the implementation
 pub trait Sender {
     fn send(&mut self, json: String) -> Result<String, String>;
     fn send_pretty(&mut self, delegate: Value) -> Result<String, String> {

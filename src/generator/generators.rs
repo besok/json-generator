@@ -1,4 +1,4 @@
-use crate::generator::{GeneratorFunc, Generator};
+use crate::generator::{GeneratorFunc, Generator, Func, new_func};
 use rand::distributions::Alphanumeric;
 use rand::prelude::ThreadRng;
 use uuid::Uuid;
@@ -15,8 +15,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use serde_json::Value;
 use std::iter::FromIterator;
-use crate::parser::generator::GenError;
 use crate::generator::from_string::FromStringTo;
+use crate::parser::GenError;
 
 pub struct Null {}
 
@@ -44,6 +44,22 @@ impl GeneratorFunc for Sequence {
     fn next_value(&mut self) -> Value {
         self.val += self.step;
         Value::from(self.val)
+    }
+}
+
+pub struct RandomBool {
+    rng: ThreadRng
+}
+
+impl RandomBool {
+    pub fn new() -> Self {
+        RandomBool { rng: rand::thread_rng() }
+    }
+}
+
+impl GeneratorFunc for RandomBool {
+    fn next_value(&mut self) -> Value {
+        Value::from(self.rng.gen_bool(0.4))
     }
 }
 
@@ -200,20 +216,30 @@ pub fn read_file_into_string(path: &str) -> Result<String, Error> {
 
 pub struct RandomArray {
     len: usize,
-    delegate: Generator,
+    delegate: Option<Generator>,
 }
 
 impl RandomArray {
     pub fn new(len: usize, delegate: Generator) -> Self {
-        RandomArray { len, delegate }
+        RandomArray { len, delegate: Some(delegate) }
+    }
+    pub fn new_size(len: usize) -> Self {
+        RandomArray { len, delegate: None }
+    }
+    pub fn len(&self) -> usize {
+        self.len
     }
 }
 
 impl GeneratorFunc for RandomArray {
     fn next_value(&mut self) -> Value {
         Value::Array(
-            (0..self.len).map(|_| self.delegate.next()).collect()
+            (0..self.len).map(|_| self.delegate.as_ref().map(|e| e.next()).unwrap_or(Value::Null)).collect()
         )
+    }
+
+    fn merge(&self, another_gf: Func) -> Result<Func, GenError> {
+        Ok(new_func(RandomArray::new(self.len, Generator { function: another_gf })))
     }
 }
 
@@ -224,7 +250,6 @@ mod tests {
     use std::io::Error;
     use serde_json::Value;
     use std::env;
-    use crate::parser::generator::GenError;
 
     fn gen<T: GeneratorFunc + 'static>(f: T) -> Generator {
         Generator::new(f)

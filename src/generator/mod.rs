@@ -17,10 +17,15 @@ use once_cell::sync::Lazy;
 use std::rc::Rc;
 use std::any::{type_name, Any};
 use serde_json::Value;
+use crate::parser::GenError;
+use crate::generator::generators::RandomArray;
 
 /// The trait represents the function to generate jsons
 pub trait GeneratorFunc {
     fn next_value(&mut self) -> Value;
+    fn merge(&self, another_gf: Func) -> Result<Func, GenError> {
+        Err(GenError::new_with("the functions are unable to merge in the order".to_string()))
+    }
 }
 
 /// for logging purposes
@@ -43,7 +48,10 @@ impl Debug for dyn GeneratorFunc {
 
 type Func = Rc<RefCell<dyn GeneratorFunc>>;
 
-/// the struct represents the generator which is essentially a wrapper to generalize GeneratorFunc
+pub fn new_func<T: GeneratorFunc + 'static>(entity: T) -> Func {
+    Rc::new(RefCell::new(entity))
+}
+
 #[derive(Debug)]
 pub struct Generator {
     function: Func
@@ -65,10 +73,17 @@ impl Clone for Generator {
 impl Generator {
     pub fn new<T: GeneratorFunc + 'static>(entity: T) -> Self {
         info!("create a generator({})", print_type_of(&entity));
-        Generator { function: Rc::new(RefCell::new(entity)) }
+        Generator { function: new_func(entity) }
     }
     pub fn next(&self) -> Value {
         RefCell::borrow_mut(&self.function).next_value()
+    }
+
+
+    pub fn merge(&self, gen: &Generator) -> Result<Generator, GenError> {
+        RefCell::borrow_mut(&self.function)
+            .merge(gen.function.clone())
+            .map(|e| Generator { function: e })
     }
 }
 
@@ -78,18 +93,17 @@ mod tests {
     use crate::generator::{GeneratorFunc, Generator};
     use serde_json::Value;
 
-    struct SimpleGenFun{}
-    impl GeneratorFunc for SimpleGenFun{
+    struct SimpleGenFun {}
+
+    impl GeneratorFunc for SimpleGenFun {
         fn next_value(&mut self) -> Value {
             Value::Null
         }
-
     }
 
-
     #[test]
-    fn to_string_test(){
-        let f = Generator::new(SimpleGenFun { });
+    fn to_string_test() {
+        let f = Generator::new(SimpleGenFun {});
         if_let!(f.next() => f.next() => assert_eq!(f.next(),Value::Null))
     }
 }

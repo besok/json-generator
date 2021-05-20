@@ -15,7 +15,7 @@ use self::nom::bytes::complete::is_not;
 use self::nom::character::is_digit;
 use std::num::ParseIntError;
 use crate::generator::Generator;
-use crate::parser::generator::generator;
+use crate::parser::generator::atomic_generator;
 use self::nom::combinator::map_parser;
 use self::nom::error::ErrorKind;
 //
