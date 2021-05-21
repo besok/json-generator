@@ -47,14 +47,11 @@ fn bool(i: &str) -> IResult<&str, Generator> {
 fn sequence(i: &str) -> IResult<&str, Generator> {
     func("seq", args_string(|elems| {
         new({
-            let val = if let Some(Ok(new_val)) = elems.get(0).map(|e| e.parse()) {
-                new_val
-            } else { 0 };
+            let val =
+                if let Some(Ok(new_val)) = elems.get(0).map(|e| e.parse()) { new_val } else { 0 };
 
             let step =
-                if let Some(Ok(new_step)) = elems.get(1).map(|e| e.parse()) {
-                    new_step
-                } else { 1 };
+                if let Some(Ok(new_step)) = elems.get(1).map(|e| e.parse()) { new_step } else { 1 };
 
             Sequence { val, step }
         })
@@ -65,19 +62,14 @@ fn sequence(i: &str) -> IResult<&str, Generator> {
 fn random_string(i: &str) -> IResult<&str, Generator> {
     func("str", args_string(|elems| {
         new({
-            let n = if let Some(Ok(new_n)) = elems.get(0).map(|e| e.parse()) {
-                new_n
-            } else { 0 };
+            let n =
+                if let Some(Ok(new_n)) = elems.get(0).map(|e| e.parse()) { new_n } else { 0 };
 
             let prefix =
-                if let Some(Ok(new_p)) = elems.get(1).map(|e| e.parse()) {
-                    new_p
-                } else { String::new() };
+                if let Some(Ok(new_p)) = elems.get(1).map(|e| e.parse()) { new_p } else { String::new() };
 
             let suffix =
-                if let Some(Ok(new_s)) = elems.get(2).map(|e| e.parse()) {
-                    new_s
-                } else { String::new() };
+                if let Some(Ok(new_s)) = elems.get(2).map(|e| e.parse()) { new_s } else { String::new() };
 
 
             RandomString::new_with(n, prefix, suffix)
@@ -87,10 +79,9 @@ fn random_string(i: &str) -> IResult<&str, Generator> {
 
 fn random_int(i: &str) -> IResult<&str, Generator> {
     fn get_or_def(elems: &Vec<&str>, idx: usize, def: i32) -> i32 {
-        if let Some(Ok(v)) =
-        elems.get(idx).map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) {
-            v
-        } else { def }
+        if let Some(Ok(v)) = elems
+            .get(idx)
+            .map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) { v } else { def }
     }
 
     func("int", args_string(|elems| {
@@ -138,7 +129,7 @@ fn random_str_from_file(i: &str) -> IResult<&str, Generator> {
                      new(RandomFromFile::<String>::new(path, ",")?),
                  [path, d] =>
                      new(RandomFromFile::<String>::new(path, d)?),
-                 _ => Err(GenError::new())
+                 _ => Err(GenError::new_with_in_parser("the path or the delimiter should be presented"))
              }
          }))(i)
 }
@@ -151,7 +142,7 @@ fn random_int_from_file(i: &str) -> IResult<&str, Generator> {
                      new(RandomFromFile::<i64>::new(path, ",")?),
                  [path, d] =>
                      new(RandomFromFile::<i64>::new(path, d)?),
-                 _ => Err(GenError::new())
+                 _ => Err(GenError::new_with_in_parser("the path or delimiter is not found"))
              }
          }))(i)
 }
@@ -164,7 +155,7 @@ pub fn generator(i: &str) -> Result<Generator, GenError> {
                     gens
                         .get(0)
                         .map(|g| g.clone())
-                        .ok_or(GenError::new());
+                        .ok_or(GenError::new_with_in_parser("at least one generator should exist"));
 
                 for el in gens.iter().skip(1) {
                     res = res.and_then(|g| el.merge(&g))
@@ -173,7 +164,7 @@ pub fn generator(i: &str) -> Result<Generator, GenError> {
             },
     )(i)
         .map(|e| e.1)
-        .map_err(|e| GenError::new_with(e.to_string()))
+        .map_err(|e| GenError::new_with_in_parser(e.to_string().as_str()))
 }
 
 pub fn atomic_generator(i: &str) -> IResult<&str, Generator> {

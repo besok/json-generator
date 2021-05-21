@@ -2,7 +2,8 @@ use serde_json::{Value, Map};
 use crate::generator::{Generator, GeneratorFunc};
 use crate::json_template::JsonTemplate::{Plain, Array, Object, Gen};
 use crate::parser::generator::{atomic_generator, generator};
-use crate::parser::GenError;
+use simplelog::*;
+use crate::error::GenError;
 
 #[derive(Debug)]
 pub enum JsonTemplate {
@@ -56,11 +57,12 @@ impl JsonTemplate {
                         match v {
                             Value::String(gen_str) => {
                                 res_pairs.push((
-                                    k.strip_prefix(indicator).ok_or(GenError::new_with("unreachable".to_string()))?.to_string(),
+                                    k.strip_prefix(indicator).ok_or(GenError::new_with("unreachable"))?.to_string(),
                                     Gen(parse_generator(gen_str)?)
                                 ))
                             }
-                            _ => return Err(GenError::new_with(format!("Error for field '{}' : a generator function should be a string.", k)))
+                            _ => return Err(GenError::new_with(format!("Error for field '{}' : a generator function should be a string.", k)
+                                .as_str()))
                         }
                     } else {
                         res_pairs.push((k.clone(), JsonTemplate::new(v.clone(), indicator)?))
@@ -95,7 +97,8 @@ impl GeneratorFunc for JsonTemplate {
                 Value::from(fields)
             }
 
-            Array(elems) => Value::Array(elems.into_iter().map(|t| t.next_value()).collect()),
+            Array(elems) =>
+                Value::Array(elems.into_iter().map(|t| t.next_value()).collect()),
             Plain(v) => v.clone(),
             Gen(generator) => generator.next()
         }

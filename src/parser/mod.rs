@@ -15,8 +15,7 @@ use nom::{
     Err, IResult, HexDisplay,
 };
 use std::num::ParseIntError;
-
-pub mod json;
+use crate::error::GenError;
 pub mod generator;
 
 
@@ -106,44 +105,4 @@ fn args<'a, F, T, S>(transformer: F, elem_transformer: S) -> impl FnMut(&'a str)
         F: Fn(Vec<T>) -> Result<Generator, GenError>,
         S: Fn(&'a str) -> IResult<&'a str, T> {
     map_res(separated_list0(char(','), elem_transformer), transformer)
-}
-
-#[derive(Debug)]
-pub struct GenError {
-    reason: String
-}
-
-impl GenError {
-    pub fn new() -> Self {
-        GenError { reason: "generator error".to_string() }
-    }
-    pub fn new_with(reason: String) -> Self {
-        GenError { reason }
-    }
-}
-
-impl Error for GenError {}
-
-impl From<std::io::Error> for GenError {
-    fn from(e: std::io::Error) -> Self {
-        GenError::new_with(e.to_string())
-    }
-}
-
-impl From<std::string::String> for GenError {
-    fn from(e: std::string::String) -> Self {
-        GenError::new_with(e)
-    }
-}
-
-impl From<nom::Err<nom::error::Error<&str>>> for GenError {
-    fn from(e: nom::Err<nom::error::Error<&str>>) -> Self {
-        GenError::new_with(e.to_string())
-    }
-}
-
-impl Display for GenError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "error while parsing a generator func, reason: {}", self.reason)
-    }
 }

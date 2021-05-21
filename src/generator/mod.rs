@@ -17,14 +17,14 @@ use once_cell::sync::Lazy;
 use std::rc::Rc;
 use std::any::{type_name, Any};
 use serde_json::Value;
-use crate::parser::GenError;
 use crate::generator::generators::RandomArray;
+use crate::error::GenError;
 
 /// The trait represents the function to generate jsons
 pub trait GeneratorFunc {
     fn next_value(&mut self) -> Value;
     fn merge(&self, another_gf: Func) -> Result<Func, GenError> {
-        Err(GenError::new_with("the functions are unable to merge in the order".to_string()))
+        Err(GenError::new_with("the functions are unable to merge in the order"))
     }
 }
 
@@ -72,7 +72,7 @@ impl Clone for Generator {
 
 impl Generator {
     pub fn new<T: GeneratorFunc + 'static>(entity: T) -> Self {
-        info!("create a generator({})", print_type_of(&entity));
+        debug!("create a generator({})", print_type_of(&entity));
         Generator { function: new_func(entity) }
     }
     pub fn next(&self) -> Value {

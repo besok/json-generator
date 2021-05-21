@@ -3,6 +3,7 @@ use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
 use crate::sender::Sender;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::error::GenError;
 
 /// the struct which implements the Sender trait and allows
 /// to save a generated json to folder
@@ -17,23 +18,24 @@ impl FolderSender {
         match metadata(path.clone()) {
             Ok(m) => {
                 if !m.is_dir() {
-                    panic!("the output path to file should point out to a folder.");
+                    panic!(format!("the output path {} to the file should point to a folder.", path));
                 }
             }
             Err(e) =>
                 if !Path::new(path.as_str()).exists() {
                     match create_dir_all(path.as_str()) {
                         Ok(_) => (),
-                        Err(e) => panic!("error occurring while creating or open the file:{}", e.to_string()),
+                        Err(e) => panic!("error occurred while creating or open the file:{}", e.to_string()),
                     }
-                } else { panic!("the error occurs with output file: {}", e.to_string()) }
+                } else { panic!("the error occurred with the output file: {}", e.to_string()) }
         }
+        debug!("the folder sender with the path {} has been created successfully", path);
         FolderSender { path, idx: 0 }
     }
 }
 
 impl Sender for FolderSender {
-    fn send(&mut self, json: String) -> Result<String, String> {
+    fn send(&mut self, json: String) -> Result<String, GenError> {
         let mut pb = PathBuf::new();
         pb.push(self.path.as_str());
         pb.push(format!("json_{}.json", self.idx).as_str());
@@ -47,15 +49,14 @@ impl Sender for FolderSender {
 
 
         if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
-            Err(format!("error while appending to a file: {}", e.to_string()))
+            Err(GenError::new_with_in_sender(format!("error while appending to a file: {}", e.to_string()).as_str()))
         } else {
-            let res = format!("the item {} has been sent to folder: {}", self.idx, self.path);
+            let res = format!("the item {} has been saved in the folder: {}", self.idx, self.path);
             self.idx += 1;
             Ok(res)
         }
     }
 }
-
 
 
 /// the struct which implements the Sender trait and allows
@@ -70,7 +71,7 @@ impl FileSender {
         match metadata(path.clone()) {
             Ok(m) => {
                 if m.is_dir() {
-                    panic!("the output path to file should point out to a file not a folder.");
+                    panic!(format!("the output path {} should point to a file not to a folder.", path));
                 }
             }
             Err(_) => match create_file(path.as_str()) {
@@ -79,23 +80,24 @@ impl FileSender {
             }
         }
 
+        debug!("the file sender with the path {} has been created successfully", path);
         FileSender { path }
     }
 }
 
-fn create_file(path: &str) -> Result<(), String> {
+fn create_file(path: &str) -> Result<(), GenError> {
     if !Path::new(path).exists() {
         match File::create(path) {
             Ok(_) => Ok(()),
-            Err(e) => Err(
-                format!("error occuring while creating or open the file:{}",
-                        e.to_string())),
+            Err(e) => Err(GenError::new_with_in_sender(
+                format!("error occurred while creating or open the file:{}", e.to_string())
+                    .as_str())),
         }
     } else { Ok(()) }
 }
 
 impl Sender for FileSender {
-    fn send(&mut self, json: String) -> Result<String, String> {
+    fn send(&mut self, json: String) -> Result<String, GenError> {
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
@@ -104,10 +106,10 @@ impl Sender for FileSender {
 
 
         if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
-            Err(format!("error while appendiong a file: {}", e.to_string()))
+            Err(GenError::new_with_in_sender(format!("error occurred while appending to the file: {}", e.to_string())
+                .as_str()))
         } else {
-            let res = format!("the item has been sent to file: {}", self.path);
-            Ok(res)
+            Ok(format!("the item has been saved to the file: {}", self.path))
         }
     }
 }

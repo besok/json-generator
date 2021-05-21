@@ -16,7 +16,7 @@ use std::rc::Rc;
 use serde_json::Value;
 use std::iter::FromIterator;
 use crate::generator::from_string::FromStringTo;
-use crate::parser::GenError;
+use crate::error::GenError;
 
 pub struct Null {}
 
@@ -201,7 +201,7 @@ fn process_string<T: FromStringTo>(v: String, d: &str) -> Result<Vec<T>, GenErro
     let trim_spaces = del != " ";
 
     for el in v.split(del).into_iter() {
-        let v = FromStringTo::parse(el, trim_spaces).map_err(|e| GenError::new_with(e))?;
+        let v = FromStringTo::parse(el, trim_spaces)?;
         res.push(v);
     }
     Ok(res)

@@ -2,6 +2,7 @@ use std::process::{Command, Output, Child};
 use std::io;
 use crate::sender::{Sender, S};
 use std::io::Error;
+use crate::error::GenError;
 
 /// the struct which implements the Sender trait and allows
 /// to send a json to the server, using curl utility
@@ -11,6 +12,7 @@ pub struct CurlSender {
 
 impl CurlSender {
     pub fn new(cmd: String) -> Self {
+        debug!("the curl sender with the command: {} has been created successfully", cmd.as_str());
         CurlSender {
             cmd
         }
@@ -21,19 +23,19 @@ impl CurlSender {
 fn out_to_str(out: &Output) -> String {
     format!("| status:{}{} | stdout:{}{}{} | stderr:{}{}",
             out.status, S,
-            S,std::str::from_utf8(out.stdout.as_slice()).expect("no error"), S,
-            S,std::str::from_utf8(out.stderr.as_slice()).expect("no error"),
+            S, std::str::from_utf8(out.stdout.as_slice()).expect("the curl command should be correct"), S,
+            S, std::str::from_utf8(out.stderr.as_slice()).expect("the curl command should be correct"),
     )
 }
 
 impl Sender for CurlSender {
-    fn send(&mut self, json: String) -> Result<String, String> {
+    fn send(&mut self, json: String) -> Result<String, GenError> {
         match curl(self.cmd.as_str(), json.as_str()) {
             Ok(o) => Ok(
-                format!("sending item to curl: {} - input: {}{} {}",
+                format!("sending the item with the curl command: {} - input: {}{} {}",
                         S, self.cmd, S, out_to_str(&o))
             ),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(GenError::new_with_in_sender(e.to_string().as_str())),
         }
     }
 }
@@ -71,8 +73,8 @@ mod tests {
             match res {
                 Output { status, stderr, stdout } => {
                     println!("status : {}", status);
-                    println!("{}", std::str::from_utf8(&stdout).expect("no error"));
-                    println!("{}", std::str::from_utf8(&stderr).expect("no error"));
+                    println!("{}", std::str::from_utf8(&stdout).expect("the curl command should be correct"));
+                    println!("{}", std::str::from_utf8(&stderr).expect("the curl command should be correct"));
                 }
             }
         }

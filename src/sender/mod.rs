@@ -1,6 +1,7 @@
 //! The module which is responsible to send generated jsons to different sources
 //! It provides the trait Sender to work with
 use serde_json::{Value, to_string_pretty};
+use crate::error::GenError;
 
 pub mod http;
 pub mod file;
@@ -11,17 +12,18 @@ const S: &'static str = "\r\n";
 const S: &'static str = "\n";
 
 pub trait Sender {
-    fn send(&mut self, json: String) -> Result<String, String>;
-    fn send_pretty(&mut self, delegate: Value) -> Result<String, String> {
-        self.send(to_string_pretty(&delegate).map_err(|e| e.to_string())?)
+    fn send(&mut self, json: String) -> Result<String, GenError>;
+    fn send_with_pretty(&mut self, delegate: Value, pretty: bool) -> Result<String, GenError> {
+        self.send(if pretty { to_string_pretty(&delegate)? } else { delegate.to_string() })
     }
 }
 
 pub struct ConsoleSender {}
 
 impl Sender for ConsoleSender {
-    fn send(&mut self, json: String) -> Result<String, String> {
+    fn send(&mut self, json: String) -> Result<String, GenError> {
+        debug!("to send to the console");
         println!("{}", json);
-        Ok("item has been sent to console".to_string())
+        Ok("the item has been sent to the console".to_string())
     }
 }
