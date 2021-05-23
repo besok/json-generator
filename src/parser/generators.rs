@@ -192,7 +192,7 @@ fn new<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generator::{uuid, atomic_generator, generator, current_dt, random_string, random_int, GenError};
+    use crate::parser::generators::{uuid, atomic_generator, generator, current_dt, random_string, random_int, GenError};
     use nom::error::{ErrorKind, Error};
     use crate::generator::Generator;
     use serde_json::{Value, json};

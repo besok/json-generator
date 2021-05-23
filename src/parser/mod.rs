@@ -16,7 +16,7 @@ use nom::{
 };
 use std::num::ParseIntError;
 use crate::error::GenError;
-pub mod generator;
+pub mod generators;
 
 
 fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {

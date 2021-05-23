@@ -1,0 +1,9 @@
+{
+  "|type": "str_from_list(business,technical,analytical)",
+  "|id": "uuid()",
+  "|index": "seq()",
+  "|update_tm": "dt()",
+  "|created_tm": "dt(%Y-%m-%d %H:%M:%S)"
+  "|dsc": "str(200)",
+  "|related_records": "int(1,1000) -> array(5)"
+}

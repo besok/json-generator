@@ -1,4 +1,4 @@
-use std::fs::{metadata, Metadata, File, OpenOptions, create_dir_all};
+use std::fs::{metadata, Metadata, File, OpenOptions, create_dir_all, remove_file, remove_dir};
 use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
 use crate::sender::Sender;
@@ -76,7 +76,7 @@ impl FileSender {
             }
             Err(_) => match create_file(path.as_str()) {
                 Ok(_) => (),
-                Err(str) => panic!(str),
+                Err(str) => panic!("the error while creating a file {}", path),
             }
         }
 
@@ -95,6 +95,31 @@ fn create_file(path: &str) -> Result<(), GenError> {
         }
     } else { Ok(()) }
 }
+
+fn rem_file(path: &str) -> Result<(), GenError> {
+    if !Path::new(path).exists() {
+        Err(GenError::new_with_in_sender(format!("the path {} does not exist", path).as_str()))
+    } else {
+        match remove_file(path) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(GenError::new_with_in_sender(
+                format!("error occurred while remove the file:{}", e.to_string()).as_str())),
+        }
+    }
+}
+
+fn rem_folder(path: &str) -> Result<(), GenError> {
+    if !Path::new(path).exists() {
+        Err(GenError::new_with_in_sender(format!("the folder {} does not exist", path).as_str()))
+    } else {
+        match remove_dir(path) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(GenError::new_with_in_sender(
+                format!("error occurred while remove the file:{}", e.to_string()).as_str())),
+        }
+    }
+}
+
 
 impl Sender for FileSender {
     fn send(&mut self, json: String) -> Result<String, GenError> {
@@ -116,24 +141,29 @@ impl Sender for FileSender {
 
 #[cfg(test)]
 mod tests {
-    use crate::sender::file::{FileSender, FolderSender};
+    use crate::sender::file::{FileSender, FolderSender, rem_file, rem_folder};
     use crate::sender::Sender;
 
     #[test]
     fn file_sender_test() {
-        match FileSender::new(r#"C:\projects\json-generator\jsons\test.txt"#.to_string())
-            .send("test".to_string()) {
-            Ok(_) => (),
-            Err(_) => panic!("!"),
+        let file = "jsons/temp/file.json".to_string();
+
+        match FileSender::new(file.clone())
+            .send("{}".to_string()) {
+            Ok(_) => assert!(rem_file(file.as_str()).is_ok()),
+            Err(e) => panic!("error : {}", e),
         }
     }
 
     #[test]
     fn folder_sender_test() {
-        match FolderSender::new(r#"C:\projects\json-generator\jsons\t"#.to_string())
-            .send("test!!".to_string()) {
-            Ok(_) => (),
-            Err(_) => panic!("!"),
+        let file = "jsons/temp/temp".to_string();
+        match FolderSender::new(file.clone()).send("{}".to_string()) {
+            Ok(_) => {
+                assert!(rem_file(format!("{}/{}", file, "json_0.json").as_str()).is_ok());
+                assert!(rem_folder(file.as_str()).is_ok());
+            }
+            Err(e) => panic!("error : {}", e),
         }
     }
 }

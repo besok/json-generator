@@ -1,7 +1,7 @@
 use serde_json::{Value, Map};
 use crate::generator::{Generator, GeneratorFunc};
 use crate::json_template::JsonTemplate::{Plain, Array, Object, Gen};
-use crate::parser::generator::{atomic_generator, generator};
+use crate::parser::generators::{atomic_generator, generator};
 use simplelog::*;
 use crate::error::GenError;
 

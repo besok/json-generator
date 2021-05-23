@@ -13,8 +13,8 @@ const S: &'static str = "\n";
 
 pub trait Sender {
     fn send(&mut self, json: String) -> Result<String, GenError>;
-    fn send_with_pretty(&mut self, delegate: Value, pretty: bool) -> Result<String, GenError> {
-        self.send(if pretty { to_string_pretty(&delegate)? } else { delegate.to_string() })
+    fn send_with_pretty(&mut self, delegate: &Value, pretty: bool) -> Result<String, GenError> {
+        self.send(if pretty { to_string_pretty(delegate)? } else { delegate.to_string() })
     }
 }
 
@@ -27,3 +27,4 @@ impl Sender for ConsoleSender {
         Ok("the item has been sent to the console".to_string())
     }
 }
+

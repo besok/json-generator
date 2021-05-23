@@ -1,26 +1,16 @@
 use clap::{App, Arg, ArgMatches};
 use simplelog::*;
-
-use crate::generator::generators::read_file_into_string;
-use crate::sender::{ConsoleSender, Sender};
-use crate::sender::file::{FileSender, FolderSender};
-use crate::sender::http::CurlSender;
-use crate::json_template::JsonTemplate;
-use crate::generator::GeneratorFunc;
-
-#[macro_use]
-extern crate log;
-extern crate simplelog;
+use serde_json::Value;
+use json_generator::generate;
+use json_generator::generator::GeneratorFunc;
+use json_generator::json_template::JsonTemplate;
+use json_generator::sender::{Sender, ConsoleSender};
+use json_generator::sender::file::{FileSender, FolderSender};
+use json_generator::sender::http::CurlSender;
+use json_generator::generator::generators::read_file_into_string;
 
 #[macro_use]
-mod r#macro;
-
-mod parser;
-mod generator;
-mod sender;
-mod json_template;
-mod error;
-
+pub extern crate log;
 
 fn main() {
     let args = get_args();
@@ -28,34 +18,29 @@ fn main() {
         SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap()
     }
 
-    generate(
-        &mut json(&args),
-        r(&args),
-        args.is_present("pretty-js"),
-        &mut output(&args),
-    )
+    generate_from_args(&args);
 }
 
-fn get_args() -> ArgMatches {
+fn create_args<'b>() -> App<'b> {
     App::new("json-generator")
         .version("0.2")
         .author("Boris Zhguchev <zhguchev@gmail.com>")
         .about("The json generator with ability to generate dynamic fields.")
         .arg(
-            Arg::with_name("json-file")
+            Arg::with_name("jt-file")
                 .short('f')
-                .long("json-file")
+                .long("file")
                 .takes_value(true)
                 .allow_hyphen_values(true)
-                .conflicts_with("json-body")
+                .conflicts_with("jt-body")
                 .about("the file containing the json template"))
         .arg(
-            Arg::with_name("json-body")
+            Arg::with_name("jt-body")
                 .short('b')
-                .long("json-body")
+                .long("body")
                 .takes_value(true)
                 .allow_hyphen_values(true)
-                .conflicts_with("json-file")
+                .conflicts_with("jt-file")
                 .about("the text representation containing the json template"))
         .arg(
             Arg::with_name("repeater")
@@ -99,7 +84,10 @@ fn get_args() -> ArgMatches {
             Arg::with_name("logs")
                 .long("logs")
                 .about("to print extra logs"))
-        .get_matches()
+}
+
+fn get_args() -> ArgMatches {
+    create_args().get_matches()
 }
 
 fn r(args: &ArgMatches) -> usize {
@@ -135,21 +123,9 @@ fn output(args: &ArgMatches) -> Vec<Box<dyn Sender>> {
     outputs
 }
 
-fn generate(json: &mut JsonTemplate, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> () {
-    debug!("generate the {} repetitions. ", rep);
-    for _ in 0..rep {
-        for mut v in outputs.iter_mut() {
-            match v.send_with_pretty(json.next_value(), pretty) {
-                Ok(res) => info!("sending json, success : {}", res),
-                Err(e) => error!("sending json, error : {}", e)
-            }
-        }
-    }
-}
-
-fn json(args: &ArgMatches) -> JsonTemplate {
+fn json_template(args: &ArgMatches) -> JsonTemplate {
     debug!("try to parse the json template...");
-    let txt = match (args.value_of("json-body"), args.value_of("json-file")) {
+    let txt = match (args.value_of("jt-body"), args.value_of("jt-file")) {
         (Some(body), _) => {
             debug!("ready to obtain the json template from the body {}", body);
             String::from(body)
@@ -169,8 +145,33 @@ fn json(args: &ArgMatches) -> JsonTemplate {
     }
 }
 
+fn generate_from_args(args: &ArgMatches) -> Vec<Value> {
+    generate(&mut json_template(&args), r(&args), args.is_present("pretty"), &mut output(&args))
+}
+
 #[cfg(test)]
 mod tests {
+    use clap::{ArgMatches};
+    use crate::{create_args, generate_from_args};
+
     #[test]
-    fn find_json_text() {}
+    fn find_json_text() {
+        let jt_body = r#"{"|id": "uuid()"}"#;
+        let args =
+            create_args()
+                .get_matches_from(
+                    vec![
+                        "",
+                        format!("--body={}", jt_body).as_str(),
+                        "--pretty",
+                    ]);
+        let res = generate_from_args(&args);
+        assert_eq!(res.len(), 1);
+        assert_eq!(res.get(0)
+                       .and_then(|v| v.as_object())
+                       .unwrap()
+                       .get("id")
+                       .and_then(|e| e.as_str())
+                       .unwrap().len(), 36);
+    }
 }
