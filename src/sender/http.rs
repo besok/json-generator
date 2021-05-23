@@ -1,8 +1,9 @@
 use std::process::{Command, Output, Child};
 use std::io;
-use crate::sender::{Sender, S};
+use crate::sender::{Sender, S, string_from};
 use std::io::Error;
 use crate::error::GenError;
+use serde_json::Value;
 
 /// the struct which implements the Sender trait and allows
 /// to send a json to the server, using curl utility
@@ -29,8 +30,9 @@ fn out_to_str(out: &Output) -> String {
 }
 
 impl Sender for CurlSender {
-    fn send(&mut self, json: String) -> Result<String, GenError> {
-        match curl(self.cmd.as_str(), json.as_str()) {
+    fn send(&mut self, json: &Value, pretty: bool)-> Result<String, GenError> {
+        let js = string_from(json, pretty)?;
+        match curl(self.cmd.as_str(), js.as_str()) {
             Ok(o) => Ok(
                 format!("sending the item with the curl command: {} - input: {}{} {}",
                         S, self.cmd, S, out_to_str(&o))

@@ -1,8 +1,15 @@
 [package]
 name = "json-generator"
+description = "The simple console utility and library to generate JSON items"
 version = "0.2.0"
-authors = ["Boris Zhguchev <boris.zhguchev@ericsson.com>"]
+authors = ["Boris Zhguchev <boris.zhguchev@gmail.com>"]
 edition = "2018"
+license-file = "LICENSE"
+homepage = "https://github.com/besok/json-generator"
+repository = "https://github.com/besok/json-generator"
+readme = "README.md"
+keywords = ["json", "json-generator","json-template","generator" ]
+categories = ["libraries","Command line utilities","Development tools"]
 
 [dependencies]
 nom = "6.0"

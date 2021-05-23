@@ -97,40 +97,42 @@ If the generator contains another generator then the syntax obtain extra element
 The generators can have empty arguments:
 ``` str(10,,postfix)```
 
-The string literals can be placed as an argument straightly 
-or encompassed by the single quotes:
+The string literals can be placed as an argument straightly or encompassed by the single quotes:
 ``` str(10,literal,'with quotes')```
  
-
 #### List of generators:
-| Generator | Arguments | Description | Example |
+| Generator | Arguments=default value | Description | Example |
 |----------------------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| seq | starting point,step | the sequentially-increase row of numbers (1,2,3,4 ...) | sequence(10)  |
-| str | size of row | the row composed of random letters and numbers, predefined length | random_str(10) |
-| int | low bound and high bound | the random number lying in predefined bounds | random_int(1,100) |
-| random_str_from_file | path to file, delimiter(optional) | the list of string pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used | random_str_from_file(\home\user\json) random_str_from_file(\home\user\json,;) random_str_from_file(\home\user\json,\n) |
-| random_int_from_file | path to file, delimiter(optional)  | list of numbers pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used  | random_int_from_file(c:\\user\json)  |
-| random_str_from_list | list of values | the list of string | random_str_from_list(a,b,c,d) |
-| random_int_from_list | list of values | list of numbers | random_int_from_list(1,2,3,4,5) |
-| uuid |  | generated uuid  | uuid() |
-| dt | format | the current date and time. By default can be ommited  and '%Y-%m-%d %H:%M:%S' will be used | currnet_date_time(%Y-%m-%d) |
-| array | number of elements, generator for elements | the generator to get the array filled. | array(10,random_int(1,10)) |
+| seq | starting point=0,step=1 | the sequentially-increase row of numbers (1,2,3,4 ...) | seq() / seq(10,2) / seq(,2)  |
+| bool |  | generated boolean  | bool() |
+| str | size of row=0,prefix='',suffix='' | the row composed of random letters and numbers, predefined length having prefix and suffix | str() / str(10) / str(,prefix,) / str(,,'suffix') / str(10,abc,cde)|
+| int | low bound=0 and high bound=1000 | the random number lying in predefined bounds | int() / int(1,100) / int(1) / int(,10) |
+| str_from_list | list of values | the list of string | str_from_list(a,'b',c,d) |
+| int_from_list | list of values | list of numbers | int_from_list(1,2,3,4,5) |
+| str_from_file | path to file, delimiter=','  | the list of string pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used | str_from_file(\home\user\json) str_from_file(\home\user\json,;)  str_from_file(\home\user\json,\n) |
+| int_from_file | path to file, delimiter=','  | list of numbers pulled off the predefined file note: delimiter can be omitted and the default delimiter(,) will be used  |  int_from_file(c:\\user\json)  |
+| uuid |  | generated uuid  | uuid() |'
+| dt | format=%Y-%m-%d %H:%M:%S | the current date and time. | dt(%Y-%m-%d)/dt() |
+| array | func_to_generate -> array(number=1) | the generator to get the array filled. | int(1) -> array() |
 
 
-### Command line example
+### How to use
 
-```
-json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder --to-curl '-X POST ip'
+### From console
+#### Command line example
+```bash
+json-generator  -f "file path" -r 10 --pretty --logs --to-folder folder --to-curl '-X POST ip'
 ```    
 
-#### Command line Arguments
+##### Command line Arguments
 | Short | Long  | Description                                                                                                 | Example                                                               |
 |----------|-----------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| b        | json-body | the text reprensting the json body                                                                          | --json-body \| -b '{"k":"v"}'                                         |
-| f        | json-file | the path to file including the json                                                                         | --json-file \| -f c:\\folder\json.json                                |
-| r        | repeat    | the number of repetetions of generating                                                                     | --repeat \| -r 10                                                     |
-|          | pretty    | inserts formatting symbols in proper places                                                                 | --pretty                                                              |
-|          | print     | prints logs                                                                                                 | --print                                                               |
+| b        | body | the text represents the json template                                                                          | --body \| -b '{"k":"v"}'                                         |
+| f        | file | the path to file including the json template                                                                        | --file \| -f c:\\folder\json.json                                |
+| r        | repeat    | the number of repetitions                                                                      | --repeat \| -r 10                                                     |
+| i        | indicator    | the indicator signalling the field carries the function to generate.                                                                      | --indicator \| -i >                                                     |
+|          | pretty    | inserts formatting symbols to get json readable                                                           | --pretty                                                              |
+|          | logs     | prints logs                                                                                                 | --logs                                                               |
 |          | to-cmd    | show json in console(by default if outputs array is empty)                                                  | --to-cmd                                                              |
 |          | to-file   | append generated jsons to file. If the file does not exist.  it creates a new one. The folder should exist. | --to-file c:\\folder\jsons.json                                       |
 |          | to-folder | creates new files and place it to the selected folder.  It creates folder if it not exists.                 | --to-file c:\\folder                                                  |
@@ -138,35 +140,76 @@ json-generator.exe  -f "file path" -r 10  --pretty --print --to-folder folder --
 | h       | help    | information  about commands                                                                                  | -h \| --help                                                          |
 | V       | version | version                                                                                                     | -V \| --version                                                       |
  
-**note**: for using --to-curl  parameter need to ensure the curl utility is installed.
-#### Json example
+**note**: for using --to-curl  parameter the system needs to have the curl utility installed.
+
+### From dependency
+
+```toml
+json-generator="0.2.0"
+```
+
+```rust
+use json_generator::json_template::JsonTemplate;
+use json_generator::generate;
+use serde_json::Value;
+
+fn main() {
+    let json_template:&str = "{\"id\":\"seq()\"}";
+    let mut json_template = JsonTemplate::from_str(json_template, "|");
+    let generated_value:Vec<Value> = generate(&mut json_template,10,true,vec![]);
+}
+```
+
+#### Senders
+The function generate gets the last parameter it is an array of senders.
+Essentially, sender is a struct implementing a trait sender:
+```rust
+pub trait Sender {
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError>;
+}
+```
+and example of a simple implementation:
+
+```rust
+
+use crate::sender::{Sender,string_from};
+
+impl Sender for ConsoleSender {
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
+        println!("{}",  string_from(json, pretty)?);
+        Ok("the item has been sent to the console".to_string())
+    }
+}
 
 ```
-{
-  "person": {
-    /* sequence(1) */
-    "id": 1,
-    /* current_date_time() */
-    "update_tm": "",
-    /*random_str(10)*/
-    "name": "Eli\"za\"beth",
-    /* random_str_from_list(a,b,c,d) */
-    "surname": "EVa",
-    /*random_int(20,40)*/
-    "age": 10,
-    /*array(3,sequence(1))*/
-    "children_ids": [
-      3,
-      6
-    ],
-    "address": {
-      /*random_str(10)*/
-      "street": "Grip",
-      /*random_int(1,100)*/
-      "house": 10,
-      /* random_str_from_file(C:\projects\json-generator\jsons\cities.txt,\r\n)*/
-      "city": "Berlin"
-    }
-  }
+
+#### GenError
+By default, everything is wrapped with Gen(erator)Error, the general structure to handle errors.
+
+In general, it has the following bowels:
+
+```rust
+#[derive(Debug)]
+pub struct GenError {
+    reason: String,
+    tpe: GenErrorType,
+}
+
+#[derive(Debug)]
+pub enum GenErrorType {
+    Parser,
+    Sender,
+    Generator,
+    Common,
+}
+```
+
+and provides the following methods to work with:
+```rust
+impl GenError {
+    pub fn new_with(reason: &str) -> Self {..}
+    pub fn new_with_in_parser(reason: &str) -> Self {..}
+    pub fn new_with_in_sender(reason: &str) -> Self {..}
+    pub fn new_with_in_generator(reason: &str) -> Self {..}
 }
 ```

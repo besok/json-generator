@@ -11,19 +11,21 @@ const S: &'static str = "\r\n";
 #[cfg(not(windows))]
 const S: &'static str = "\n";
 
+pub fn string_from(json: &Value, pretty: bool) -> Result<String, GenError> {
+    if pretty { to_string_pretty(json) } else { Ok(json.to_string()) }
+        .map_err(|e| GenError::new_with_in_sender(e.to_string().as_str()))
+}
+
 pub trait Sender {
-    fn send(&mut self, json: String) -> Result<String, GenError>;
-    fn send_with_pretty(&mut self, delegate: &Value, pretty: bool) -> Result<String, GenError> {
-        self.send(if pretty { to_string_pretty(delegate)? } else { delegate.to_string() })
-    }
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError>;
 }
 
 pub struct ConsoleSender {}
 
 impl Sender for ConsoleSender {
-    fn send(&mut self, json: String) -> Result<String, GenError> {
-        debug!("to send to the console");
-        println!("{}", json);
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
+        debug!("send to the console");
+        println!("{}",  string_from(json, pretty)?);
         Ok("the item has been sent to the console".to_string())
     }
 }

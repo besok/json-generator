@@ -16,14 +16,17 @@ pub mod sender;
 pub mod json_template;
 mod error;
 
-pub fn generate(json: &mut JsonTemplate, rep: usize, pretty: bool, outputs: &mut Vec<Box<dyn Sender>>) -> Vec<Value> {
+pub fn generate(json: &mut JsonTemplate,
+                rep: usize,
+                pretty: bool,
+                outputs: &mut Vec<Box<dyn Sender>>) -> Vec<Value> {
     debug!("generate the {} repetitions. ", rep);
     let mut res = vec![];
     for _ in 0..rep {
         let value = json.next_value();
         res.push(value.clone());
         for mut v in outputs.iter_mut() {
-            match v.send_with_pretty(&value, pretty) {
+            match v.send(&value, pretty) {
                 Ok(res) => info!("sending json, success : {}", res),
                 Err(e) => error!("sending json, error : {}", e)
             }

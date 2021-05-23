@@ -1,9 +1,10 @@
 use std::fs::{metadata, Metadata, File, OpenOptions, create_dir_all, remove_file, remove_dir};
 use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
-use crate::sender::Sender;
+use crate::sender::{Sender, string_from};
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::error::GenError;
+use serde_json::Value;
 
 /// the struct which implements the Sender trait and allows
 /// to save a generated json to folder
@@ -35,7 +36,7 @@ impl FolderSender {
 }
 
 impl Sender for FolderSender {
-    fn send(&mut self, json: String) -> Result<String, GenError> {
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
         let mut pb = PathBuf::new();
         pb.push(self.path.as_str());
         pb.push(format!("json_{}.json", self.idx).as_str());
@@ -48,7 +49,8 @@ impl Sender for FolderSender {
             .expect("problem with a file");
 
 
-        if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
+        let js =  string_from(json, pretty)?;
+        if let Err(e) = file.write_all(js.into_bytes().as_slice()) {
             Err(GenError::new_with_in_sender(format!("error while appending to a file: {}", e.to_string()).as_str()))
         } else {
             let res = format!("the item {} has been saved in the folder: {}", self.idx, self.path);
@@ -122,15 +124,15 @@ fn rem_folder(path: &str) -> Result<(), GenError> {
 
 
 impl Sender for FileSender {
-    fn send(&mut self, json: String) -> Result<String, GenError> {
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
             .open(self.path.as_str())
             .expect("the file to append should be there");
 
-
-        if let Err(e) = file.write_all(json.into_bytes().as_slice()) {
+        let js = string_from(json, pretty)?;
+        if let Err(e) = file.write_all(js.into_bytes().as_slice()) {
             Err(GenError::new_with_in_sender(format!("error occurred while appending to the file: {}", e.to_string())
                 .as_str()))
         } else {
@@ -143,13 +145,14 @@ impl Sender for FileSender {
 mod tests {
     use crate::sender::file::{FileSender, FolderSender, rem_file, rem_folder};
     use crate::sender::Sender;
+    use serde_json::Value;
 
     #[test]
     fn file_sender_test() {
         let file = "jsons/temp/file.json".to_string();
 
         match FileSender::new(file.clone())
-            .send("{}".to_string()) {
+            .send(&Value::Null, false) {
             Ok(_) => assert!(rem_file(file.as_str()).is_ok()),
             Err(e) => panic!("error : {}", e),
         }
@@ -158,7 +161,7 @@ mod tests {
     #[test]
     fn folder_sender_test() {
         let file = "jsons/temp/temp".to_string();
-        match FolderSender::new(file.clone()).send("{}".to_string()) {
+        match FolderSender::new(file.clone()).send(&Value::Null, false) {
             Ok(_) => {
                 assert!(rem_file(format!("{}/{}", file, "json_0.json").as_str()).is_ok());
                 assert!(rem_folder(file.as_str()).is_ok());
