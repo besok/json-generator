@@ -7,6 +7,14 @@ use serde_json::Value;
 
 /// the struct which implements the Sender trait and allows
 /// to send a json to the server, using curl utility
+/// #Example
+/// the function using the curl from os
+/// ```
+///  let res = curl(
+///                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
+///                r#"{"key1":"value1", "key2":"value2"}"#
+/// );
+/// ```
 pub struct CurlSender {
     pub cmd: String,
 }
@@ -14,9 +22,7 @@ pub struct CurlSender {
 impl CurlSender {
     pub fn new(cmd: String) -> Self {
         debug!("the curl sender with the command: {} has been created successfully", cmd.as_str());
-        CurlSender {
-            cmd
-        }
+        CurlSender { cmd }
     }
 }
 
@@ -30,7 +36,7 @@ fn out_to_str(out: &Output) -> String {
 }
 
 impl Sender for CurlSender {
-    fn send(&mut self, json: &Value, pretty: bool)-> Result<String, GenError> {
+    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
         let js = string_from(json, pretty)?;
         match curl(self.cmd.as_str(), js.as_str()) {
             Ok(o) => Ok(

@@ -1,5 +1,5 @@
 //! ### Generators
-//! The functions which are responsible to generate new json values
+//! The functions which are responsible to generate new json values after parsing.
 pub mod generators;
 pub mod from_string;
 
@@ -22,7 +22,10 @@ use crate::error::GenError;
 
 /// The trait represents the function to generate jsons
 pub trait GeneratorFunc {
+    /// the method generates a new json value
     fn next_value(&mut self) -> Value;
+    /// the method carries a logic how to merge two functions into one.
+    /// It can be useful for the compound functions like `RandomArray`
     fn merge(&self, another_gf: Func) -> Result<Func, GenError> {
         Err(GenError::new_with("the functions are unable to merge in the order"))
     }
@@ -52,6 +55,7 @@ pub fn new_func<T: GeneratorFunc + 'static>(entity: T) -> Func {
     Rc::new(RefCell::new(entity))
 }
 
+/// In general, that is a wrapper on the function `GeneratorFunc`
 #[derive(Debug)]
 pub struct Generator {
     function: Func

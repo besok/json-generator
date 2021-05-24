@@ -16,7 +16,7 @@ Given template:
     "technical":{
        "|id": "uuid()",
        "|index": "seq()",
-       "|update_tm": "dt()",
+       "|updated_tm": "dt()",
        "|created_tm": "dt(%Y-%m-%d %H:%M:%S)"
      },
     "|is_active": "bool()",
@@ -26,7 +26,7 @@ Given template:
     "|dsc": "str(20)",
     "geo": {
         "|country": "str_from_file(jsons/countries,,)",
-        "|city": "str_from_file(jsons/cities,\n)",
+        "|city": "str_from_file(jsons/cities,'\n')",
         "|street": "str(10,,-street)",
         "|house": "int(1,1000)"
       },
@@ -47,7 +47,7 @@ Generated json:
     "dsc": "gLgvDinPZg1aMu9LpPyp",
     "email": "PMWtc@gmail.com",
     "geo": {
-      "city": "a",
+      "city": "Rome",
       "country": "Australia",
       "house": 770,
       "street": "7Ke4CAHWpk-street"
@@ -66,7 +66,7 @@ Generated json:
       "created_tm": "2021-05-23 13:09:27",
       "id": "339b0ca7-0e00-4d6e-8073-d270d7d56e2e",
       "index": 1,
-      "update_tm": "2021-05-23 13:09:27"
+      "updated_tm": "2021-05-23 13:09:27"
     },
     "type": "analytical"
   }
@@ -154,9 +154,9 @@ use json_generator::generate;
 use serde_json::Value;
 
 fn main() {
-    let json_template:&str = "{\"id\":\"seq()\"}";
-    let mut json_template = JsonTemplate::from_str(json_template, "|");
-    let generated_value:Vec<Value> = generate(&mut json_template,10,true,vec![]);
+    let json_template:&str = "{\"|id\":\"seq()\"}";
+    let mut json_template = JsonTemplate::from_str(json_template, "|").unwrap();
+    let generated_value:Vec<Value> = generate(&mut json_template,10,true,&mut vec![]);
 }
 ```
 
@@ -171,15 +171,15 @@ pub trait Sender {
 and example of a simple implementation:
 
 ```rust
-
-use crate::sender::{Sender,string_from};
-
+ use json_generator::sender::{Sender, ConsoleSender, string_from};
+ use serde_json::Value;
+ 
 impl Sender for ConsoleSender {
-    fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
-        println!("{}",  string_from(json, pretty)?);
-        Ok("the item has been sent to the console".to_string())
-    }
-}
+fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
+    println!("{}",  string_from(json, pretty)?);
+    Ok("the item has been sent to the console".to_string())
+   }
+ }
 
 ```
 

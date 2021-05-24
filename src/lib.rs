@@ -1,3 +1,81 @@
+//! # Json generator
+//! The simple console utility to generate JSON items according to the provided example composing JSON body
+//! and a set of functions that define the logic to generate new items.
+//! The utility allows delivering the generated JSON to different sources such as an HTTP server, folder or file or console
+//!
+//! Given template:
+//! ```json
+//! {
+//!   "record": {
+//!     "|type": "str_from_list(business,technical,analytical)",
+//!     "geo": {
+//!         "|country": "str_from_file(jsons/countries,,)",
+//!         "|city": "str_from_file(jsons/cities,'\n')",
+//!         "|street": "str(10,,-street)",
+//!         "|house": "int(1,1000)"
+//!       },
+//!     "|id_parent": "int_from_list(1,2,3,4,5,6,7)",
+//!     "|related_records": "int(1,1000) -> array(5)"
+//!   }
+//! }
+//! ```
+//!
+//! Generated json:
+//! ```json
+//! {
+//!   "record": {
+//!     "geo": {
+//!       "city": "Rome",
+//!       "country": "Australia",
+//!       "house": 770,
+//!       "street": "7Ke4CAHWpk-street"
+//!     },
+//!     "id_parent": 7,
+//!     "related_records": [
+//!       263,
+//!       489,
+//!       390,
+//!       226,
+//!       361
+//!     ],
+//!     "type": "analytical"
+//!   }
+//! }
+//! ```
+//! ### Usage example
+//! ```rust
+//! use json_generator::json_template::JsonTemplate;
+//! use json_generator::generate;
+//! use serde_json::Value;
+//!
+//! fn main() {
+//!     let json_template:&str = "{\"|id\":\"seq()\"}";
+//!     let mut json_template = JsonTemplate::from_str(json_template, "|").unwrap();
+//!     let generated_value:Vec<Value> = generate(&mut json_template,10,true,&mut vec![]);
+//!
+//! }
+//! ```
+//!## Senders
+//! The function generate gets the last parameter it is an array of senders.
+//! Essentially, sender is a struct implementing a trait sender:
+//! and example of a simple implementation:
+//!
+//! ```rust
+//!
+//! use json_generator::sender::{Sender, ConsoleSender, string_from};
+//! use serde_json::Value;
+//!
+//! impl Sender for ConsoleSender {
+//!     fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
+//!         println!("{}",  string_from(json, pretty)?);
+//!         Ok("the item has been sent to the console".to_string())
+//!     }
+//! }
+//!
+//! ```
+//!
+
+
 use serde_json::Value;
 use crate::generator::GeneratorFunc;
 use crate::json_template::JsonTemplate;
@@ -16,6 +94,26 @@ pub mod sender;
 pub mod json_template;
 mod error;
 
+/// the top level function to generate new json.
+/// # Arguments
+/// * `json` : JsonTemplate having the functions to generate dynamic fields
+/// * `rep` : repetitions size
+/// * `pretty` : flag indicating whether need to make the json readable
+/// * `outputs` : the list of Senders
+///
+/// # Examples
+/// ```rust
+/// use json_generator::json_template::JsonTemplate;
+/// use json_generator::generate;
+/// use serde_json::Value;
+///
+/// fn main() {
+///     let json_template:&str = "{\"|id\":\"seq()\"}";
+///     let mut json_template = JsonTemplate::from_str(json_template, "|").unwrap();
+///     let generated_value:Vec<Value> = generate(&mut json_template,10,true,&mut vec![]);
+///
+/// }
+/// ```
 pub fn generate(json: &mut JsonTemplate,
                 rep: usize,
                 pretty: bool,
@@ -73,7 +171,7 @@ mod tests {
     "|dsc": "str(20)",
     "geo": {
       "|country": "str_from_file(jsons/countries,,)",
-      "|city": "str_from_file(jsons/cities,\n)",
+      "|city": "str_from_file(jsons/cities,'\n')",
       "|street": "str(10,,-street)",
       "|house": "int(1,1000)"
     },
@@ -84,8 +182,8 @@ mod tests {
 }
             "#;
         let mut js_template = JsonTemplate::from_str(jt_body, "|").unwrap();
-        let json = generate(&mut js_template,1,true,&mut vec![]);
-        println!("{}",json.get(0).unwrap().to_string());
+        let json = generate(&mut js_template, 1, true, &mut vec![]);
+        println!("{}", json.get(0).unwrap().to_string());
         if_let!(
             json.get(0)
                 => Some(Value::Object(values)) => {

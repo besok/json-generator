@@ -1,3 +1,4 @@
+//! The module being in charge of the parsing the generated functions.
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 

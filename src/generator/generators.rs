@@ -18,6 +18,7 @@ use std::iter::FromIterator;
 use crate::generator::from_string::FromStringTo;
 use crate::error::GenError;
 
+/// The null structure, returning `serde_json::Value::Null`.
 pub struct Null {}
 
 impl GeneratorFunc for Null {
@@ -26,6 +27,7 @@ impl GeneratorFunc for Null {
     }
 }
 
+/// The structure, generating uuid.
 pub struct UUID {}
 
 impl GeneratorFunc for UUID {
@@ -34,8 +36,11 @@ impl GeneratorFunc for UUID {
     }
 }
 
+/// The structure generating integers in sequence
 pub struct Sequence {
+    /// the initial value. The value is used as a ground to start striding therefore the first value is going to be `val + step`.
     pub val: i32,
+    /// the stride of the calculation.
     pub step: i32,
 }
 
@@ -46,7 +51,7 @@ impl GeneratorFunc for Sequence {
         Value::from(self.val)
     }
 }
-
+/// The structure generating random booleans
 pub struct RandomBool {
     rng: ThreadRng
 }
@@ -63,9 +68,13 @@ impl GeneratorFunc for RandomBool {
     }
 }
 
+/// The structure generating random integer.
 pub struct RandomInt {
+    /// The start inclusively.
     start: i32,
+    /// The end exclusively.
     end: i32,
+    /// the generated random.
     rng: ThreadRng,
 }
 
@@ -82,11 +91,15 @@ impl GeneratorFunc for RandomInt {
         )
     }
 }
-
+///The function generated random string composing from prefix + generated chunk + suffix
 pub struct RandomString {
+    /// The generated chunk length
     len: usize,
+    /// the generated random.
     rng: ThreadRng,
+    /// the prefix
     prefix: String,
+    /// the suffix.
     postfix: String,
 }
 
@@ -120,8 +133,9 @@ impl GeneratorFunc for RandomString {
         Value::from(format!("{}{}{}", self.prefix, random_str, self.postfix))
     }
 }
-
+/// The function generated current data time
 pub struct CurrentDateTime {
+    /// the format of generating output
     pub format: String
 }
 
@@ -138,8 +152,11 @@ impl GeneratorFunc for CurrentDateTime {
     }
 }
 
+///The function generated the value taken from the list.
 pub struct RandomFromList<T: Into<Value>> {
+    /// the list of values to pull out.
     values: Vec<T>,
+    /// the generated random
     rng: ThreadRng,
 }
 
@@ -161,10 +178,15 @@ impl<T> GeneratorFunc for RandomFromList<T>
 }
 
 //todo in general with small files, having them in the memory is fine but if it is going to be a pitfall,
-// better to keep a path and read the file randomly.
+
+///The function generated the value taken from the file.
+/// In general, the function loads the file content to the list and operates with a list.
 pub struct RandomFromFile<T: FromStringTo + Clone + Into<Value>> {
+    /// the path to the file
     path: String,
+    /// the delimiter to distinguish the elements
     delim: String,
+    /// the function generated values.
     delegate: RandomFromList<T>,
 }
 
@@ -213,9 +235,11 @@ pub fn read_file_into_string(path: &str) -> Result<String, Error> {
     Ok(contents)
 }
 
-
+///The function generated the json value.
 pub struct RandomArray {
+    /// the length of the array
     len: usize,
+    /// the delegate function
     delegate: Option<Generator>,
 }
 

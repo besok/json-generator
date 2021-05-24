@@ -5,11 +5,27 @@ use crate::parser::generators::{atomic_generator, generator};
 use simplelog::*;
 use crate::error::GenError;
 
+/// The common structure which carries the general notion about the generated jsons.
+/// # Example
+/// /// ```rust
+/// use json_generator::json_template::JsonTemplate;
+/// use json_generator::generate;
+/// use serde_json::Value;
+///
+/// fn main() {
+///     let json_template:&str = "{\"|id\":\"int()\"}";
+///     let mut json_template = JsonTemplate::from_str(json_template, "|");
+/// }
+/// ```
 #[derive(Debug)]
 pub enum JsonTemplate {
+    /// The structure denoting the json object but enriching with the generators.
     Object(Vec<(String, JsonTemplate)>),
+    /// The structure denoting the json array but enriching with the generators.
     Array(Vec<JsonTemplate>),
+    /// The structure denoting the plain value. It can be a static value in the field.
     Plain(Value),
+    /// The structure denoting the dynamic value. It can be a dynamic value in the field.
     Gen(Generator),
 }
 
@@ -48,6 +64,11 @@ fn parse_generator(gen_str: &str) -> Result<Generator, GenError> {
 }
 
 impl JsonTemplate {
+    /// Creates new template from the json value. Due to the generators can be pointed wrongly it returns `Result`.
+    /// #Arguments
+    /// * `value` Json value represents the final json
+    /// * `indicator` the prefix in the name of the field signalling the field carries the function for the generating.
+    /// In the final json the indicator is removed from the field name.
     pub fn new(value: Value, indicator: &str) -> Result<Self, GenError> {
         match value {
             Value::Object(pairs) => {
@@ -80,6 +101,8 @@ impl JsonTemplate {
             plain => Ok(Plain(plain))
         }
     }
+    /// Creates new template from the string. Due to the generators can be pointed wrongly it returns `Result`.
+    /// Essentially, this method uses `JsonTemplate::new`
     pub fn from_str(json: &str, indicator: &str) -> Result<Self, GenError> {
         let value = serde_json::from_str(json).map_err(|e| e.to_string())?;
         JsonTemplate::new(value, indicator)
