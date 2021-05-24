@@ -1,7 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use simplelog::*;
 use serde_json::Value;
-use json_generator::generate;
 use json_generator_rand::sender::{Sender, ConsoleSender};
 use json_generator_rand::sender::file::{FileSender, FolderSender};
 use json_generator_rand::json_template::JsonTemplate;
