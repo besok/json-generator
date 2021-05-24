@@ -22,6 +22,4 @@ macro_rules! if_let {
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::generators::{RandomString, RandomInt};
-    use serde_json::Value;
 }

@@ -1,27 +1,15 @@
 use std::str;
 use nom::{
     branch::alt,
-    bytes::complete::{escaped, tag, take_while, take_while1, is_a},
-    character::complete::{alphanumeric1 as alphanumeric, char, one_of},
-    combinator::{map, map_res, opt, cut, iterator},
-    number::complete::double,
+    bytes::complete::tag,
+    combinator::map_res,
     multi::separated_list0,
-    sequence::{delimited, preceded, separated_pair, terminated, pair},
-    Err, IResult, HexDisplay,
+    sequence::{preceded, terminated},
+    IResult,
 };
 use crate::generator::{GeneratorFunc, Generator};
-use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt, RandomFromFile, RandomFromList, RandomArray, RandomBool, Null};
-use crate::generator::from_string::FromStringTo;
-use std::error::Error;
-use std::fmt::{Display, Formatter, Debug};
-use std::num::ParseIntError;
-use nom::bytes::complete::is_not;
-use nom::error::{ErrorKind, ParseError};
-use nom::character::complete::satisfy;
-use crate::parser::{func, args_string, args, str_to_int, sp, func_with_br, GenError};
-use uuid::Version::Random;
-use std::rc::Rc;
-use std::cell::RefCell;
+use crate::generator::generators::{Sequence, UUID, CurrentDateTime, RandomString, RandomInt, RandomFromFile, RandomFromList, RandomArray, RandomBool};
+use crate::parser::{func, args_string, args, str_to_int, sp, GenError};
 
 fn current_dt(i: &str) -> IResult<&str, Generator> {
     func("dt",
@@ -78,7 +66,7 @@ fn random_string(i: &str) -> IResult<&str, Generator> {
 }
 
 fn random_int(i: &str) -> IResult<&str, Generator> {
-    fn get_or_def(elems: &Vec<&str>, idx: usize, def: i32) -> i32 {
+    fn get_or_def(elems: &[&str], idx: usize, def: i32) -> i32 {
         if let Some(Ok(v)) = elems
             .get(idx)
             .map(|s| if s.is_empty() { Ok(def) } else { s.parse() }) { v } else { def }
@@ -154,8 +142,8 @@ pub fn generator(i: &str) -> Result<Generator, GenError> {
                 let mut res: Result<Generator, GenError> =
                     gens
                         .get(0)
-                        .map(|g| g.clone())
-                        .ok_or(GenError::new_with_in_parser("at least one generator should exist"));
+                        .cloned()
+                        .ok_or_else(|| GenError::new_with_in_parser("at least one generator should exist"));
 
                 for el in gens.iter().skip(1) {
                     res = res.and_then(|g| el.merge(&g))
@@ -192,8 +180,7 @@ fn new<T: GeneratorFunc + 'static>(gf: T) -> Result<Generator, GenError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::generators::{uuid, atomic_generator, generator, current_dt, random_string, random_int, GenError};
-    use nom::error::{ErrorKind, Error};
+    use crate::parser::generators::{generator, GenError};
     use crate::generator::Generator;
     use serde_json::{Value, json};
 

@@ -1,8 +1,7 @@
-use serde_json::{Value, Map};
+use serde_json::Value;
 use crate::generator::{Generator, GeneratorFunc};
 use crate::json_template::JsonTemplate::{Plain, Array, Object, Gen};
-use crate::parser::generators::{atomic_generator, generator};
-use simplelog::*;
+use crate::parser::generators::generator;
 use crate::error::GenError;
 
 /// The common structure which carries the general notion about the generated jsons.
@@ -78,7 +77,8 @@ impl JsonTemplate {
                         match v {
                             Value::String(gen_str) => {
                                 res_pairs.push((
-                                    k.strip_prefix(indicator).ok_or(GenError::new_with("unreachable"))?.to_string(),
+                                    k.strip_prefix(indicator)
+                                        .ok_or_else(|| GenError::new_with("unreachable"))?.to_string(),
                                     Gen(parse_generator(gen_str)?)
                                 ))
                             }
@@ -114,14 +114,14 @@ impl GeneratorFunc for JsonTemplate {
         match self {
             Object(gen_pairs) => {
                 let mut fields = serde_json::Map::new();
-                for (k, t) in gen_pairs.into_iter() {
+                for (k, t) in gen_pairs.iter_mut() {
                     fields.insert(k.clone(), t.next_value());
                 }
                 Value::from(fields)
             }
 
             Array(elems) =>
-                Value::Array(elems.into_iter().map(|t| t.next_value()).collect()),
+                Value::Array(elems.iter_mut().map(|t| t.next_value()).collect()),
             Plain(v) => v.clone(),
             Gen(generator) => generator.next()
         }
@@ -131,7 +131,7 @@ impl GeneratorFunc for JsonTemplate {
 #[cfg(test)]
 mod tests {
     use crate::json_template::JsonTemplate;
-    use serde_json::{json, Value};
+    use serde_json::json;
 
     #[test]
     fn simple_test() {

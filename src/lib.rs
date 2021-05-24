@@ -48,32 +48,11 @@
 //! use json_generator::generate;
 //! use serde_json::Value;
 //!
-//! fn main() {
 //!     let json_template:&str = "{\"|id\":\"seq()\"}";
 //!     let mut json_template = JsonTemplate::from_str(json_template, "|").unwrap();
 //!     let generated_value:Vec<Value> = generate(&mut json_template,10,true,&mut vec![]);
 //!
-//! }
 //! ```
-//!## Senders
-//! The function generate gets the last parameter it is an array of senders.
-//! Essentially, sender is a struct implementing a trait sender:
-//! and example of a simple implementation:
-//!
-//! ```rust
-//!
-//! use json_generator::sender::{Sender, ConsoleSender, string_from};
-//! use serde_json::Value;
-//!
-//! impl Sender for ConsoleSender {
-//!     fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
-//!         println!("{}",  string_from(json, pretty)?);
-//!         Ok("the item has been sent to the console".to_string())
-//!     }
-//! }
-//!
-//! ```
-//!
 
 
 use serde_json::Value;
@@ -107,12 +86,10 @@ mod error;
 /// use json_generator::generate;
 /// use serde_json::Value;
 ///
-/// fn main() {
 ///     let json_template:&str = "{\"|id\":\"seq()\"}";
 ///     let mut json_template = JsonTemplate::from_str(json_template, "|").unwrap();
 ///     let generated_value:Vec<Value> = generate(&mut json_template,10,true,&mut vec![]);
 ///
-/// }
 /// ```
 pub fn generate(json: &mut JsonTemplate,
                 rep: usize,
@@ -123,7 +100,7 @@ pub fn generate(json: &mut JsonTemplate,
     for _ in 0..rep {
         let value = json.next_value();
         res.push(value.clone());
-        for mut v in outputs.iter_mut() {
+        for v in outputs.iter_mut() {
             match v.send(&value, pretty) {
                 Ok(res) => info!("sending json, success : {}", res),
                 Err(e) => error!("sending json, error : {}", e)

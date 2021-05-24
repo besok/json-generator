@@ -2,7 +2,6 @@ use clap::{App, Arg, ArgMatches};
 use simplelog::*;
 use serde_json::Value;
 use json_generator::generate;
-use json_generator::generator::GeneratorFunc;
 use json_generator::json_template::JsonTemplate;
 use json_generator::sender::{Sender, ConsoleSender};
 use json_generator::sender::file::{FileSender, FolderSender};
@@ -151,7 +150,6 @@ fn generate_from_args(args: &ArgMatches) -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
-    use clap::{ArgMatches};
     use crate::{create_args, generate_from_args};
 
     #[test]

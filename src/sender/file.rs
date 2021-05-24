@@ -1,8 +1,7 @@
-use std::fs::{metadata, Metadata, File, OpenOptions, create_dir_all, remove_file, remove_dir};
-use std::io::{Error, Write};
+use std::fs::{metadata,  File, OpenOptions, create_dir_all};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use crate::sender::{Sender, string_from};
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::error::GenError;
 use serde_json::Value;
 
@@ -78,7 +77,7 @@ impl FileSender {
             }
             Err(_) => match create_file(path.as_str()) {
                 Ok(_) => (),
-                Err(str) => panic!("the error while creating a file {}", path),
+                Err(str) => panic!("the error: {} while creating a file {}",str.to_string(), path),
             }
         }
 
@@ -97,32 +96,6 @@ fn create_file(path: &str) -> Result<(), GenError> {
         }
     } else { Ok(()) }
 }
-
-fn rem_file(path: &str) -> Result<(), GenError> {
-    if !Path::new(path).exists() {
-        Err(GenError::new_with_in_sender(format!("the path {} does not exist", path).as_str()))
-    } else {
-        match remove_file(path) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(GenError::new_with_in_sender(
-                format!("error occurred while remove the file:{}", e.to_string()).as_str())),
-        }
-    }
-}
-
-fn rem_folder(path: &str) -> Result<(), GenError> {
-    if !Path::new(path).exists() {
-        Err(GenError::new_with_in_sender(format!("the folder {} does not exist", path).as_str()))
-    } else {
-        match remove_dir(path) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(GenError::new_with_in_sender(
-                format!("error occurred while remove the file:{}", e.to_string()).as_str())),
-        }
-    }
-}
-
-
 impl Sender for FileSender {
     fn send(&mut self, json: &Value, pretty: bool) -> Result<String, GenError> {
         let mut file = OpenOptions::new()
@@ -143,9 +116,37 @@ impl Sender for FileSender {
 
 #[cfg(test)]
 mod tests {
-    use crate::sender::file::{FileSender, FolderSender, rem_file, rem_folder};
+    use crate::sender::file::{FileSender, FolderSender};
     use crate::sender::Sender;
     use serde_json::Value;
+    use crate::error::GenError;
+    use std::path::Path;
+    use std::fs::{remove_file, remove_dir};
+
+    fn rem_file(path: &str) -> Result<(), GenError> {
+        if !Path::new(path).exists() {
+            Err(GenError::new_with_in_sender(format!("the path {} does not exist", path).as_str()))
+        } else {
+            match remove_file(path) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(GenError::new_with_in_sender(
+                    format!("error occurred while remove the file:{}", e.to_string()).as_str())),
+            }
+        }
+    }
+    fn rem_folder(path: &str) -> Result<(), GenError> {
+        if !Path::new(path).exists() {
+            Err(GenError::new_with_in_sender(format!("the folder {} does not exist", path).as_str()))
+        } else {
+            match remove_dir(path) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(GenError::new_with_in_sender(
+                    format!("error occurred while remove the file:{}", e.to_string()).as_str())),
+            }
+        }
+    }
+
+
 
     #[test]
     fn file_sender_test() {

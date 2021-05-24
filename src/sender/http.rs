@@ -1,7 +1,6 @@
-use std::process::{Command, Output, Child};
+use std::process::{Command, Output};
 use std::io;
 use crate::sender::{Sender, S, string_from};
-use std::io::Error;
 use crate::error::GenError;
 use serde_json::Value;
 
@@ -10,6 +9,7 @@ use serde_json::Value;
 /// #Example
 /// the function using the curl from os
 /// ```
+///  use json_generator::sender::http::curl;
 ///  let res = curl(
 ///                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
 ///                r#"{"key1":"value1", "key2":"value2"}"#
@@ -50,6 +50,7 @@ impl Sender for CurlSender {
 
 /// the function using the curl from os
 /// ```
+///  use json_generator::sender::http::curl;
 ///  let res = curl(
 ///                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
 ///                r#"{"key1":"value1", "key2":"value2"}"#).expect("no error");
@@ -69,8 +70,7 @@ pub fn curl(cmd: &str, json: &str) -> io::Result<Output> {
 #[cfg(test)]
 mod tests {
     use crate::sender::http::curl;
-    use std::process::{Output, Command, Child};
-    use std::io::Error;
+    use std::process::{Output};
 
     #[test]
     fn simple_test() {

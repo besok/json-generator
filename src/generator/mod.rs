@@ -4,20 +4,9 @@ pub mod generators;
 pub mod from_string;
 
 use std::fmt::{Debug, Formatter, Error};
-use std::collections::HashMap;
-use std::thread::Thread;
-use rand::prelude::ThreadRng;
-use std::ops::Range;
-use rand::Rng;
-use rand::distributions::Alphanumeric;
-use uuid::Uuid;
 use std::cell::RefCell;
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
 use std::rc::Rc;
-use std::any::{type_name, Any};
 use serde_json::Value;
-use crate::generator::generators::RandomArray;
 use crate::error::GenError;
 
 /// The trait represents the function to generate jsons
@@ -26,14 +15,14 @@ pub trait GeneratorFunc {
     fn next_value(&mut self) -> Value;
     /// the method carries a logic how to merge two functions into one.
     /// It can be useful for the compound functions like `RandomArray`
-    fn merge(&self, another_gf: Func) -> Result<Func, GenError> {
+    fn merge(&self, _another_gf: Func) -> Result<Func, GenError> {
         Err(GenError::new_with("the functions are unable to merge in the order"))
     }
 }
 
 /// for logging purposes
 pub fn print_type_of<T>(_: &T) -> String {
-    format!("{}", std::any::type_name::<T>())
+    std::any::type_name::<T>().to_string()
 }
 
 impl ToString for dyn GeneratorFunc {
@@ -44,8 +33,7 @@ impl ToString for dyn GeneratorFunc {
 
 impl Debug for dyn GeneratorFunc {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_str(self.to_string().as_str());
-        Ok(())
+        f.write_str(self.to_string().as_str())
     }
 }
 

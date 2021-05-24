@@ -46,7 +46,7 @@ impl From<std::io::Error> for GenError {
 
 impl From<std::string::String> for GenError {
     fn from(e: std::string::String) -> Self {
-        GenError::new_with(format!("error: {}", e.to_string()).as_str())
+        GenError::new_with(format!("error: {}", e).as_str())
     }
 }
 

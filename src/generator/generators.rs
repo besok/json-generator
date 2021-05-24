@@ -6,13 +6,7 @@ use rand::Rng;
 use chrono::Utc;
 use rand::seq::SliceRandom;
 use std::fs::File;
-use std::io::{Read, Error, ErrorKind};
-use std::str::FromStr;
-use std::num::ParseIntError;
-use std::string::ParseError;
-use std::fmt::Debug;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::io::{Read, Error};
 use serde_json::Value;
 use std::iter::FromIterator;
 use crate::generator::from_string::FromStringTo;
@@ -51,6 +45,7 @@ impl GeneratorFunc for Sequence {
         Value::from(self.val)
     }
 }
+
 /// The structure generating random booleans
 pub struct RandomBool {
     rng: ThreadRng
@@ -59,6 +54,12 @@ pub struct RandomBool {
 impl RandomBool {
     pub fn new() -> Self {
         RandomBool { rng: rand::thread_rng() }
+    }
+}
+
+impl Default for RandomBool {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -91,6 +92,7 @@ impl GeneratorFunc for RandomInt {
         )
     }
 }
+
 ///The function generated random string composing from prefix + generated chunk + suffix
 pub struct RandomString {
     /// The generated chunk length
@@ -128,11 +130,11 @@ impl GeneratorFunc for RandomString {
         let random_str = String::from_iter(
             self.rng
                 .sample_iter(&Alphanumeric)
-                .take(self.len)
-                .into_iter());
+                .take(self.len));
         Value::from(format!("{}{}{}", self.prefix, random_str, self.postfix))
     }
 }
+
 /// The function generated current data time
 pub struct CurrentDateTime {
     /// the format of generating output
@@ -182,10 +184,6 @@ impl<T> GeneratorFunc for RandomFromList<T>
 ///The function generated the value taken from the file.
 /// In general, the function loads the file content to the list and operates with a list.
 pub struct RandomFromFile<T: FromStringTo + Clone + Into<Value>> {
-    /// the path to the file
-    path: String,
-    /// the delimiter to distinguish the elements
-    delim: String,
     /// the function generated values.
     delegate: RandomFromList<T>,
 }
@@ -196,8 +194,6 @@ impl<T: FromStringTo + Clone + Into<Value>> RandomFromFile<T> {
         let rng = Default::default();
         Ok(
             RandomFromFile {
-                path: String::from(path),
-                delim: String::from(delim),
                 delegate: RandomFromList { values, rng },
             }
         )
@@ -211,7 +207,7 @@ impl<T: Clone + FromStringTo + Into<Value>> GeneratorFunc for RandomFromFile<T> 
 }
 
 fn process_string<T: FromStringTo>(v: String, d: &str) -> Result<Vec<T>, GenError> {
-    let mut del = match d.trim() {
+    let del = match d.trim() {
         r#"\r\n"# => "\r\n",
         r#"\n"# => "\n",
         r#"\r"# => "\r",
@@ -253,6 +249,7 @@ impl RandomArray {
     pub fn len(&self) -> usize {
         self.len
     }
+    pub fn is_empty(&self) -> bool {self.len == 0}
 }
 
 impl GeneratorFunc for RandomArray {
@@ -271,9 +268,7 @@ impl GeneratorFunc for RandomArray {
 mod tests {
     use crate::generator::generators::{RandomString, UUID, RandomInt, CurrentDateTime, RandomFromList, read_file_into_string, process_string, RandomFromFile, RandomArray, Null, Sequence};
     use crate::generator::{GeneratorFunc, Generator};
-    use std::io::Error;
     use serde_json::Value;
-    use std::env;
 
     fn gen<T: GeneratorFunc + 'static>(f: T) -> Generator {
         Generator::new(f)
@@ -326,7 +321,7 @@ mod tests {
 
     #[test]
     fn current_ts_test() {
-        let mut x = gen(CurrentDateTime { format: "%Y-%m-%d".to_string() });
+        let x = gen(CurrentDateTime { format: "%Y-%m-%d".to_string() });
         if_let!(x.next() => x.next() => ());
 
         let mut x = CurrentDateTime { format: "%Y-%m-%d %H:%M:%S".to_string() };
@@ -338,14 +333,14 @@ mod tests {
 
     #[test]
     fn random_from_list_test() {
-        let mut gn = gen(RandomFromList::new((1..10).collect()));
+        let gn = gen(RandomFromList::new((1..10).collect()));
         if_let!(gn.next() => Value::Number(el) =>  {
             let el = el.as_i64().unwrap();
             assert_eq!(el > 0, el < 10)
         });
 
-        let mut gf: RandomFromList<i64> = RandomFromList::new(vec![]);
-        let mut gen = gen(gf);
+        let gf: RandomFromList<i64> = RandomFromList::new(vec![]);
+        let gen = gen(gf);
         assert_eq!(gen.next(), Value::Null);
     }
 
@@ -354,7 +349,7 @@ mod tests {
         let g = RandomFromFile::<i64>::new(r#"jsons/numbers"#, ",")
             .map(|f| Generator::new(f));
 
-        if_let!(g => Ok(mut g) => if_let!(g.next() => Value::Number(el) => {
+        if_let!(g => Ok(g) => if_let!(g.next() => Value::Number(el) => {
             let el = el.as_i64().unwrap();
             assert!(el > 0 && el < 10)
         }));
@@ -362,7 +357,7 @@ mod tests {
         let g = RandomFromFile::<String>::new(r#"jsons/cities"#, "\n")
             .map(|f| Generator::new(f));
 
-        if_let!(g => Ok(mut g) => if_let!(g.next() => Value::String(city) => {
+        if_let!(g => Ok(g) => if_let!(g.next() => Value::String(city) => {
             assert!("BerlinPragueMoscowLondonHelsinkiRomeBarcelonaViennaAmsterdamDublin".contains(&city))
         }));
     }
@@ -384,7 +379,7 @@ mod tests {
         assert_eq!(vec, vec![1, 2, 3]);
 
         let err = process_string::<i32>("1,c,3".to_string(), ",");
-        assert_eq!(err.err().unwrap().to_string(), "error while parsing a generator func, reason: invalid digit found in string");
+        assert_eq!(err.err().unwrap().to_string(), "error while parsing a generator func, reason: impossible to convert string to i32 due to invalid digit found in string and type: Parser");
 
         let vec = process_string::<i64>("-1,-2,-3".to_string(), ",").unwrap();
         assert_eq!(vec, vec![-1, -2, -3]);

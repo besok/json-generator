@@ -1,19 +1,16 @@
 //! The module being in charge of the parsing the generated functions.
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
 
-use nom::error::{ErrorKind, ParseError};
+use nom::error::ParseError;
 
 use crate::generator::Generator;
 use nom::{
     branch::alt,
-    bytes::complete::{escaped, tag, take_while, take_while1, is_a},
-    character::complete::{alphanumeric1 as alphanumeric, char, one_of},
-    combinator::{map, map_res, opt, cut, iterator},
-    number::complete::double,
+    bytes::complete::{escaped, tag, take_while, take_while1},
+    character::complete::{ char, one_of},
+    combinator::{ map_res},
     multi::separated_list0,
-    sequence::{delimited, preceded, separated_pair, terminated, pair},
-    Err, IResult, HexDisplay,
+    sequence::{ preceded, terminated},
+    IResult,
 };
 use std::num::ParseIntError;
 use crate::error::GenError;
@@ -24,11 +21,6 @@ fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     let chars = " \t\r\n";
     take_while(move |c| chars.contains(c))(i)
 }
-
-fn end_br(c: char) -> bool {
-    c != ')'
-}
-
 fn is_numeric_with_neg(c: char) -> bool {
     char::is_numeric(c) || c == '-'
 }
