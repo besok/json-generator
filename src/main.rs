@@ -2,11 +2,12 @@ use clap::{App, Arg, ArgMatches};
 use simplelog::*;
 use serde_json::Value;
 use json_generator::generate;
-use json_generator::json_template::JsonTemplate;
-use json_generator::sender::{Sender, ConsoleSender};
-use json_generator::sender::file::{FileSender, FolderSender};
-use json_generator::sender::http::CurlSender;
-use json_generator::generator::generators::read_file_into_string;
+use json_generator_rand::sender::{Sender, ConsoleSender};
+use json_generator_rand::sender::file::{FileSender, FolderSender};
+use json_generator_rand::json_template::JsonTemplate;
+use json_generator_rand::sender::http::CurlSender;
+use json_generator_rand::generator::generators::read_file_into_string;
+use json_generator_rand::generate;
 
 #[macro_use]
 pub extern crate log;
