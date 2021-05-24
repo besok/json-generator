@@ -73,7 +73,7 @@ fn create_args<'b>() -> App<'b> {
                 .about("save the generated jsons to the file"))
         .arg(
             Arg::with_name("to-console")
-                .long("to-cmd")
+                .long("to-console")
                 .about("to display the generated jsons in the console(by default if outputs array is empty)"))
         .arg(
             Arg::with_name("pretty-js")

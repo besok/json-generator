@@ -1,0 +1,32 @@
+{
+  "description": "the example how to create a json template to generate new jsons",
+  "note": "the prefix | in a field name signals that the field carries a function to generate data.",
+  "record": {
+    "code": "zTt0W(code)",
+    "dsc": "OwsJ4twVOr3xT7sYfiF8P2BxYbUCTNt1SHDxCKjpNg3RkFLpzCWzMjToQgQTXmxvbFkvR6v73kwI41NsLioghR7VQ5UKgJtb0NV6rQvhkFKmGm0oMRUT1Yr1q55jfC4qMK4yQYfNgYQa8fxREjyxTU0H35ZnFQOzlf9jKEVXCzwN57JHaPujJG7PvNXPDy6dXDg2NZqz",
+    "email": "ZpfDU@gmail.com",
+    "geo": {
+      "city": "e",
+      "country": "USA",
+      "house": 842,
+      "street": "oEGpdQduR2-street"
+    },
+    "id_parent": 1,
+    "is_active": false,
+    "name": "customer85JRpVTA3x",
+    "related_records": [
+      336,
+      388,
+      586,
+      320,
+      437
+    ],
+    "technical": {
+      "created_tm": "2021-05-24 20:35:58",
+      "id": "23e033f6-b6d9-4f22-9563-2bd3fb14559f",
+      "index": 1,
+      "update_tm": "2021-05-24 20:35:58"
+    },
+    "type": "analytical"
+  }
+}{"description":"the example how to create a json template to generate new jsons","note":"the prefix | in a field name signals that the field carries a function to generate data.","record":{"code":"ak9cB(code)","dsc":"kosabH87GTh6XCiHyM0fPrhE3qOB62TvEgWAtwBs6YVZ93mKRIsLTW6GZo4bhfLg7qiCWxRKCHGFizJ3tbKi5pOugiLOIj303mJeCLURZel969Z0ZMMBvNvjkg8VJjEr39a71TCHty1eYGoMo4USUyhlwt4VukMgPH5PDCt3f8pUw21HioseYspzfplR3ABdcNm6hYP5","email":"f157B@gmail.com","geo":{"city":"n","country":"Japan","house":835,"street":"JYwZGYRrD6-street"},"id_parent":7,"is_active":false,"name":"customer06JrvMx8cW","related_records":[406,908,261,724,262],"technical":{"created_tm":"2021-05-24 20:37:12","id":"8121ea28-8887-4ece-8b4e-d8621d2e4e0e","index":1,"update_tm":"2021-05-24 20:37:12"},"type":"analytical"}}
