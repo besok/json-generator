@@ -9,7 +9,7 @@ homepage = "https://github.com/besok/json-generator"
 repository = "https://github.com/besok/json-generator"
 readme = "README.md"
 keywords = ["json", "json-generator","json-template","generator" ]
-categories = ["libraries","Command line utilities","Development tools"]
+categories = ["libraries","command-line-utilities","development-tools"]
 
 [dependencies]
 nom = "6.0"
