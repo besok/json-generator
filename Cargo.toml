@@ -1,5 +1,5 @@
 [package]
-name = "json-generator-rand"
+name = "json-gen"
 description = "The simple console utility and library to generate JSON items"
 version = "0.2.0"
 authors = ["Boris Zhguchev <boris.zhguchev@gmail.com>"]

@@ -120,8 +120,13 @@ The string literals can be placed as an argument straightly or encompassed by th
 
 ### From console
 #### Command line example
+
+```bush
+cargo install json-gen
+```
+
 ```bash
-json-generator  -f "file path" -r 10 --pretty --logs --to-folder folder --to-curl '-X POST ip'
+json-gen  -f "file path" -r 10 --pretty --logs --to-folder folder --to-curl '-X POST ip'
 ```    
 
 ##### Command line Arguments
@@ -145,7 +150,7 @@ json-generator  -f "file path" -r 10 --pretty --logs --to-folder folder --to-cur
 ### From dependency
 
 ```toml
-json-generator="0.2.0"
+json-gen="0.2.0"
 ```
 
 ```rust

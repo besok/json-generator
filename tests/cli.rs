@@ -6,7 +6,7 @@ use std::process::Command; // Run programs
 
 #[test]
 fn start_test() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("json-generator")?;
+    let mut cmd = Command::cargo_bin("json-gen")?;
 
     cmd.arg("--version");
     cmd.assert()
@@ -18,7 +18,7 @@ fn start_test() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn help_test() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("json-generator")?;
+    let mut cmd = Command::cargo_bin("json-gen")?;
 
     cmd.arg("--help");
     cmd
@@ -31,7 +31,7 @@ fn help_test() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 
 fn basic_body_test() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("json-generator")?;
+    let mut cmd = Command::cargo_bin("json-gen")?;
     let json_body = r#"
     {
         "|type": "str_from_list(business,technical,analytical)",

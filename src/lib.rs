@@ -44,8 +44,8 @@
 //! ```
 //! ### Usage example
 //! ```rust
-//! use json_generator::json_template::JsonTemplate;
-//! use json_generator::generate;
+//! use json_gen::json_template::JsonTemplate;
+//! use json_gen::generate;
 //! use serde_json::Value;
 //!
 //!     let json_template:&str = "{\"|id\":\"seq()\"}";
@@ -82,8 +82,8 @@ mod error;
 ///
 /// # Examples
 /// ```rust
-/// use json_generator::json_template::JsonTemplate;
-/// use json_generator::generate;
+/// use json_gen::json_template::JsonTemplate;
+/// use json_gen::generate;
 /// use serde_json::Value;
 ///
 ///     let json_template:&str = "{\"|id\":\"seq()\"}";

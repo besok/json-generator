@@ -9,7 +9,7 @@ use serde_json::Value;
 /// #Example
 /// the function using the curl from os
 /// ```
-///  use json_generator::sender::http::curl;
+///  use json_gen::sender::http::curl;
 ///  let res = curl(
 ///                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
 ///                r#"{"key1":"value1", "key2":"value2"}"#
@@ -50,7 +50,7 @@ impl Sender for CurlSender {
 
 /// the function using the curl from os
 /// ```
-///  use json_generator::sender::http::curl;
+///  use json_gen::sender::http::curl;
 ///  let res = curl(
 ///                r#"-X POST 127.0.0.1:7878 -H Content-Type:application/json"#,
 ///                r#"{"key1":"value1", "key2":"value2"}"#).expect("no error");
