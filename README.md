@@ -150,7 +150,7 @@ json-gen  -f "file path" -r 10 --pretty --logs --to-folder folder --to-curl '-X 
 ### From dependency
 
 ```toml
-json-gen="0.2.1"
+json-gen="*"
 ```
 
 ```rust
