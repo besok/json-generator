@@ -20,72 +20,72 @@ fn main() {
     generate_from_args(&args);
 }
 
-fn create_args<'b>() -> App<'b> {
-    App::new("json-generator")
-        .version("0.2")
+fn create_args<'a,'b>() -> App<'a,'b> {
+    App::new("json-gen")
+        .version("0.2.1")
         .author("Boris Zhguchev <zhguchev@gmail.com>")
-        .about("The json generator with ability to generate dynamic fields.")
+        .help("The json generator with ability to generate dynamic fields.")
         .arg(
             Arg::with_name("jt-file")
-                .short('f')
+                .short("f")
                 .long("file")
                 .takes_value(true)
                 .allow_hyphen_values(true)
                 .conflicts_with("jt-body")
-                .about("the file containing the json template"))
+                .help("the file containing the json template"))
         .arg(
             Arg::with_name("jt-body")
-                .short('b')
+                .short("b")
                 .long("body")
                 .takes_value(true)
                 .allow_hyphen_values(true)
                 .conflicts_with("jt-file")
-                .about("the text representation containing the json template"))
+                .help("the text representation containing the json template"))
         .arg(
             Arg::with_name("repeater")
-                .short('r')
+                .short("r")
                 .long("repeat")
                 .takes_value(true)
-                .about("how many repetition needs to perform"))
+                .help("how many repetition needs to perform"))
         .arg(
             Arg::with_name("indicator")
-                .short('i')
+                .short("i")
                 .long("indicator")
                 .takes_value(true)
-                .about("the prefix signalling the field contains a generator"))
+                .help("the prefix signalling the field contains a generator"))
         .arg(
             Arg::with_name("to-curl")
                 .long("to-curl")
                 .takes_value(true)
                 .allow_hyphen_values(true)
-                .about("to send the request through the curl utility using this param and adding json body (curl utility needs to be installed)"))
+                .help("to send the request through the curl utility using this param and adding json body (curl utility needs to be installed)"))
         .arg(
             Arg::with_name("to-folder")
                 .long("to-folder")
                 .takes_value(true)
                 .allow_hyphen_values(true)
-                .about("to save the generated jsons in the folder"))
+                .help("to save the generated jsons in the folder"))
         .arg(
             Arg::with_name("to-file")
                 .long("to-file")
                 .takes_value(true)
                 .allow_hyphen_values(true)
-                .about("save the generated jsons to the file"))
+                .help("save the generated jsons to the file"))
         .arg(
             Arg::with_name("to-console")
                 .long("to-console")
-                .about("to display the generated jsons in the console(by default if outputs array is empty)"))
+                .help("to display the generated jsons in the console(by default if outputs array is empty)"))
         .arg(
             Arg::with_name("pretty-js")
                 .long("pretty")
-                .about("to format the generated json into the readable view"))
+                .help("to format the generated json into the readable view"))
         .arg(
             Arg::with_name("logs")
                 .long("logs")
-                .about("to print extra logs"))
+                .help("to print extra logs"))
 }
 
-fn get_args() -> ArgMatches {
+fn get_args<'a>() -> ArgMatches<'a> {
     create_args().get_matches()
 }
 

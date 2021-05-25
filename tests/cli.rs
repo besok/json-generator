@@ -2,19 +2,7 @@ use assert_cmd::prelude::*;
 // Add methods on commands
 use predicates::prelude::*;
 // Used for writing assertions
-use std::process::Command; // Run programs
-
-#[test]
-fn start_test() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("json-gen")?;
-
-    cmd.arg("--version");
-    cmd.assert()
-        .success()
-        .stdout("json-generator 0.2");
-
-    Ok(())
-}
+use std::process::Command;
 
 #[test]
 fn help_test() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,7 +12,7 @@ fn help_test() -> Result<(), Box<dyn std::error::Error>> {
     cmd
         .assert()
         .success()
-        .stdout(predicate::str::contains("json-generator 0.2"));
+        .stdout(predicate::str::contains("The json generator with ability to generate dynamic fields"));
 
     Ok(())
 }
