@@ -1,9 +1,26 @@
 # Json generator
 The simple console utility to generate JSON items according to the provided example composing JSON body 
 and a set of functions that define the logic to generate new items.
- 
 The utility allows delivering the generated JSON to different sources such as an HTTP server, folder or file or console
 
+## Examples
+
+#### Simple console example
+![Simple console example](gifs/simple-json-gen.gif)
+
+#### Another simple console example
+
+![Another simple console example](gifs/simple-json-gen2.gif)
+
+#### Complex folder example
+
+![Complex folder example](gifs/complex-json-gen.gif)
+
+#### Curl example
+
+![Curl example](gifs/complex-to-curl.gif)
+
+---
 
 Contents
 ========
