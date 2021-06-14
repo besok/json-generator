@@ -5,7 +5,6 @@ and a set of functions that define the logic to generate new items.
 The utility allows delivering the generated JSON to different sources such as an HTTP server, folder or file or console
 
 
-
 Contents
 ========
 
@@ -20,7 +19,6 @@ Contents
 
 ### Overall
 
----
 Given template:
 ```json
 {
@@ -90,7 +88,6 @@ Generated json:
 
 ### Rules
 
----
 Overall, if the field does not have a specific prefix, depicting that the field carries a generator function, 
 the value of the field will be taken and returned in the result.
 Otherwise, if the field contains a prefix in its name the value is expected to be a string and describe the function to generate the values.
@@ -106,7 +103,6 @@ By default the prefix is ```|``` like in the example:
 
 ### Generators
 
----
 Every generator has a following syntax:
 ``` generator name ( arg1, arg2, ..) ```
 
@@ -137,7 +133,6 @@ The string literals can be placed as an argument straightly or encompassed by th
 
 ### How to use
 
----
 #### From console
 
 ```bush

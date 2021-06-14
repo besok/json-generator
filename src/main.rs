@@ -22,7 +22,7 @@ fn main() {
 
 fn create_args<'a,'b>() -> App<'a,'b> {
     App::new("json-gen")
-        .version("0.2.1")
+        .version("0.2.3")
         .author("Boris Zhguchev <zhguchev@gmail.com>")
         .help("The json generator with ability to generate dynamic fields.")
         .arg(
@@ -145,7 +145,7 @@ fn json_template(args: &ArgMatches) -> JsonTemplate {
 }
 
 fn generate_from_args(args: &ArgMatches) -> Vec<Value> {
-    generate(&mut json_template(&args), r(&args), args.is_present("pretty"), &mut output(&args))
+    generate(&mut json_template(&args), r(&args), args.is_present("pretty-js"), &mut output(&args))
 }
 
 #[cfg(test)]
