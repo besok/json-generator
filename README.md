@@ -1,8 +1,20 @@
-### Json generator
+# Json generator
 The simple console utility to generate JSON items according to the provided example composing JSON body 
 and a set of functions that define the logic to generate new items.
  
 The utility allows delivering the generated JSON to different sources such as an HTTP server, folder or file or console
+
+
+
+Contents
+========
+
+ * [Overall](#оverall)
+ * [Rules](#rules)
+ * [Generators](#generators)
+ * [How to use](#how-to-use)
+ 
+
 
 ### Overall
 
@@ -73,7 +85,7 @@ Generated json:
 }
 ```
 
-### Generated rules
+### Rules
 Overall, if the field does not have a specific prefix, depicting that the field carries a generator function, 
 the value of the field will be taken and returned in the result.
 Otherwise, if the field contains a prefix in its name the value is expected to be a string and describe the function to generate the values.
@@ -118,8 +130,7 @@ The string literals can be placed as an argument straightly or encompassed by th
 
 ### How to use
 
-### From console
-#### Command line example
+#### From console
 
 ```bush
 cargo install json-gen
@@ -147,7 +158,7 @@ json-gen  -f "file path" -r 10 --pretty --logs --to-folder folder --to-curl '-X 
  
 **note**: for using --to-curl  parameter the system needs to have the curl utility installed.
 
-### From dependency
+#### From dependency
 
 ```toml
 json-gen="*"
